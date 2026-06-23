@@ -1,0 +1,193 @@
+200
+Season(
+    name='Aliens Among Immortals',
+    crawl_link=[Server(name='myanime', link='https://myanime.live/?infinity=scrolling')],
+    episode_server=[
+        [
+            Server(name='dailymotion', link='https://myanime.live/2026/06/16/dao-yao-xing-aliens-among-immortals-episode-35-english-sub/'),
+            Server(name='dailymotion', link='https://myanime.live/2026/06/11/dao-yao-xing-aliens-among-immortals-episode-34-english-sub/'),
+            Server(name='dailymotion', link='https://myanime.live/2026/06/10/dao-yao-xing-aliens-among-immortals-episode-33-english-sub/'),
+            Server(name='dailymotion', link='https://myanime.live/2026/06/04/dao-yao-xing-aliens-among-immortals-episode-32-english-sub/'),
+            Server(name='dailymotion', link='https://myanime.live/2026/06/02/dao-yao-xing-aliens-among-immortals-episode-31-english-sub/'),
+            Server(name='dailymotion', link='https://myanime.live/2026/05/28/dao-yao-xing-aliens-among-immortals-episode-30-english-sub/'),
+            Server(name='dailymotion', link='https://myanime.live/2026/05/26/dao-yao-xing-aliens-among-immortals-episode-29-english-sub/'),
+            Server(name='dailymotion', link='https://myanime.live/2026/05/21/dao-yao-xing-aliens-among-immortals-episode-28-english-sub/'),
+            Server(name='dailymotion', link='https://myanime.live/2026/05/19/dao-yao-xing-aliens-among-immortals-episode-27-english-sub/'),
+            Server(name='dailymotion', link='https://myanime.live/2026/05/15/dao-yao-xing-aliens-among-immortals-episode-26-english-sub/'),
+            Server(name='dailymotion', link='https://myanime.live/2026/05/12/dao-yao-xing-aliens-among-immortals-episode-25-english-sub/'),
+            Server(name='dailymotion', link='https://myanime.live/2026/05/07/dao-yao-xing-aliens-among-immortals-episode-24-english-sub/'),
+            Server(name='dailymotion', link='https://myanime.live/2026/05/05/dao-yao-xing-aliens-among-immortals-episode-23-english-sub/'),
+            Server(name='dailymotion', link='https://myanime.live/2026/04/30/dao-yao-xing-aliens-among-immortals-episode-22-english-sub/'),
+            Server(name='dailymotion', link='https://myanime.live/2026/04/28/dao-yao-xing-aliens-among-immortals-episode-21-english-sub/'),
+            Server(name='dailymotion', link='https://myanime.live/2026/04/21/dao-yao-xing-aliens-among-immortals-episode-20-english-sub/'),
+            Server(name='dailymotion', link='https://myanime.live/2026/04/16/dao-yao-xing-aliens-among-immortals-episode-19-english-sub/'),
+            Server(name='dailymotion', link='https://myanime.live/2026/04/14/dao-yao-xing-aliens-among-immortals-episode-18-english-sub/'),
+            Server(name='dailymotion', link='https://myanime.live/2026/04/09/dao-yao-xing-aliens-among-immortals-episode-17-english-sub/'),
+            Server(name='dailymotion', link='https://myanime.live/2026/04/07/dao-yao-xing-aliens-among-immortals-episode-16-english-sub/'),
+            Server(name='dailymotion', link='https://myanime.live/2026/04/02/dao-yao-xing-aliens-among-immortals-episode-15-english-sub/'),
+            Server(name='dailymotion', link='https://myanime.live/2026/03/31/dao-yao-xing-aliens-among-immortals-episode-14-english-sub/'),
+            Server(name='dailymotion', link='https://myanime.live/2026/03/26/dao-yao-xing-aliens-among-immortals-episode-13-english-sub/'),
+            Server(name='dailymotion', link='https://myanime.live/2026/03/24/dao-yao-xing-aliens-among-immortals-episode-12-english-sub/'),
+            Server(name='dailymotion', link='https://myanime.live/2026/03/19/dao-yao-xing-aliens-among-immortals-episode-11-english-sub/'),
+            Server(name='dailymotion', link='https://myanime.live/2026/03/17/dao-yao-xing-aliens-among-immortals-episode-10-english-sub/'),
+            Server(name='dailymotion', link='https://myanime.live/2026/03/12/dao-yao-xing-aliens-among-immortals-episode-09-english-sub/'),
+            Server(name='dailymotion', link='https://myanime.live/2026/03/10/dao-yao-xing-aliens-among-immortals-episode-08-english-sub/'),
+            Server(name='dailymotion', link='https://myanime.live/2026/03/06/dao-yao-xing-aliens-among-immortals-episode-07-english-sub/'),
+            Server(name='dailymotion', link='https://myanime.live/2026/03/06/dao-yao-xing-aliens-among-immortals-episode-06-english-sub/'),
+            Server(name='dailymotion', link='https://myanime.live/2026/03/05/dao-yao-xing-aliens-among-immortals-episode-05-english-sub/'),
+            Server(name='dailymotion', link='https://myanime.live/2026/03/05/dao-yao-xing-aliens-among-immortals-episode-04-english-sub/'),
+            Server(name='dailymotion', link='https://myanime.live/2026/03/05/dao-yao-xing-aliens-among-immortals-episode-03-english-sub/'),     
+            Server(name='dailymotion', link='https://myanime.live/2026/03/04/dao-yao-xing-aliens-among-immortals-episode-02-english-sub/'),     
+            Server(name='dailymotion', link='https://myanime.live/2026/03/04/dao-yao-xing-aliens-among-immortals-episode-01-english-sub/')      
+        ]
+    ],
+    episode=[
+        [
+            Server(
+                name='35 Dao Yao Xing – Aliens Among Immortals episode 35 english sub',
+                link='https://geo.dailymotion.com/player.html?video=k2AEEsHrFUg1AiGKHxc&'
+            ),
+            Server(
+                name='34 Dao Yao Xing – Aliens Among Immortals episode 34 english sub',
+                link='https://geo.dailymotion.com/player.html?video=k5xw3pqAlrlvtVGyZHk&'
+            ),
+            Server(
+                name='33 Dao Yao Xing – Aliens Among Immortals episode 33 english sub',
+                link='https://geo.dailymotion.com/player.html?video=k77eTC4bclKVmdGxN8m&'
+            ),
+            Server(
+                name='32 Dao Yao Xing – Aliens Among Immortals episode 32 english sub',
+                link='https://geo.dailymotion.com/player.html?video=k7IPiO8n7ehp3ZGpxDG&'
+            ),
+            Server(
+                name='31 Dao Yao Xing – Aliens Among Immortals episode 31 english sub',
+                link='https://geo.dailymotion.com/player.html?video=k2DzICnkY3RXtZGndMa&'
+            ),
+            Server(
+                name='30 Dao Yao Xing – Aliens Among Immortals episode 30 english sub',
+                link='https://geo.dailymotion.com/player.html?video=k70k76VWotxbDaGe18k&'
+            ),
+            Server(
+                name='29 Dao Yao Xing – Aliens Among Immortals episode 29 english sub',
+                link='https://geo.dailymotion.com/player.html?video=k18XlDGJszqnUyGcc6O&'
+            ),
+            Server(
+                name='28 Dao Yao Xing – Aliens Among Immortals episode 28 english sub',
+                link='https://geo.dailymotion.com/player.html?video=k4rlaZ0nVOXBH7G7OdQ&'
+            ),
+            Server(
+                name='27 Dao Yao Xing – Aliens Among Immortals episode 27 english sub',
+                link='https://geo.dailymotion.com/player.html?video=k6uKMfCC5piKa6G4Wju&'
+            ),
+            Server(
+                name='26 Dao Yao Xing – Aliens Among Immortals episode 26 english sub',
+                link='https://geo.dailymotion.com/player.html?video=k6ryutywGS07R4G2weU&'
+            ),
+            Server(
+                name='25 Dao Yao Xing – Aliens Among Immortals episode 25 english sub',
+                link='https://geo.dailymotion.com/player.html?video=k3rsKr0cVNWBMVFZBNM&'
+            ),
+            Server(
+                name='24 Dao Yao Xing – Aliens Among Immortals episode 24 english sub',
+                link='https://geo.dailymotion.com/player.html?video=k75M9ldFrMY6MRFSpci&'
+            ),
+            Server(
+                name='23 Dao Yao Xing – Aliens Among Immortals episode 23 english sub',
+                link='https://geo.dailymotion.com/player.html?video=kh8aIJmSGuYiSxFQjFk&'
+            ),
+            Server(
+                name='22 Dao Yao Xing – Aliens Among Immortals episode 22 english sub',
+                link='https://geo.dailymotion.com/player.html?video=kYnv3N1eNXJSguFMC2E&'
+            ),
+            Server(
+                name='21 Dao Yao Xing – Aliens Among Immortals episode 21 english sub',
+                link='https://geo.dailymotion.com/player.html?video=k3CuWwJTP9qWBnFKgnW&'
+            ),
+            Server(
+                name='20 Dao Yao Xing – Aliens Among Immortals episode 20 english sub',
+                link='https://geo.dailymotion.com/player.html?video=k3GD4sOAoDiw8pFConI&'
+            ),
+            Server(
+                name='19 Dao Yao Xing – Aliens Among Immortals episode 19 english sub',
+                link='https://geo.dailymotion.com/player.html?video=k76qCec347ZHX8FyUs2&'
+            ),
+            Server(
+                name='18 Dao Yao Xing – Aliens Among Immortals episode 18 english sub',
+                link='https://geo.dailymotion.com/player.html?video=k3YIKHv1xMUwe3FxIzu&'
+            ),
+            Server(
+                name='17 Dao Yao Xing – Aliens Among Immortals episode 17 english sub',
+                link='https://geo.dailymotion.com/player.html?video=k256t8zbUIcGihFu5j2&'
+            ),
+            Server(
+                name='16 Dao Yao Xing – Aliens Among Immortals episode 16 english sub',
+                link='https://geo.dailymotion.com/player.html?video=k684wdsXMInvbSFr3SC&'
+            ),
+            Server(
+                name='15 Dao Yao Xing – Aliens Among Immortals episode 15 english sub',
+                link='https://geo.dailymotion.com/player.html?video=k50A6oIS0D5RYmFo0ty&'
+            ),
+            Server(
+                name='14 Dao Yao Xing – Aliens Among Immortals episode 14 english sub',
+                link='https://geo.dailymotion.com/player.html?video=k7dodCSKby1ir2FlriG&'
+            ),
+            Server(
+                name='13 Dao Yao Xing – Aliens Among Immortals episode 13 english sub',
+                link='https://geo.dailymotion.com/player.html?video=k7MX653XTBkQe9FitEU&'
+            ),
+            Server(
+                name='12 Dao Yao Xing – Aliens Among Immortals episode 12 english sub',
+                link='https://geo.dailymotion.com/player.html?video=k5Ypry9jI21Sj9Fh2Q4&'
+            ),
+            Server(
+                name='11 Dao Yao Xing – Aliens Among Immortals episode 11 english sub',
+                link='https://geo.dailymotion.com/player.html?video=k1EYtn9kulnVw7Fdw4o&'
+            ),
+            Server(
+                name='10 Dao Yao Xing – Aliens Among Immortals episode 10 english sub',
+                link='https://geo.dailymotion.com/player.html?video=k57e1yiS7Rw9w2Fan9O&'
+            ),
+            Server(
+                name='9 Dao Yao Xing – Aliens Among Immortals episode 09 english sub',
+                link='https://geo.dailymotion.com/player.html?video=k5H5EHX3go3tqkF7Opu&'
+            ),
+            Server(
+                name='8 Dao Yao Xing – Aliens Among Immortals episode 08 english sub',
+                link='https://geo.dailymotion.com/player.html?video=k4p1l0tEzpYzw4F6KGa&'
+            ),
+            Server(
+                name='7 Dao Yao Xing – Aliens Among Immortals episode 07 english sub',
+                link='https://geo.dailymotion.com/player.html?video=k1ThKrFTXyzmZHF4RJG&'
+            ),
+            Server(
+                name='6 Dao Yao Xing – Aliens Among Immortals episode 06 english sub',
+                link='https://geo.dailymotion.com/player.html?video=kRXWcqxG0vwEcQF4c5W&'
+            ),
+            Server(
+                name='5 Dao Yao Xing – Aliens Among Immortals episode 05 english sub',
+                link='https://geo.dailymotion.com/player.html?video=k4WUEiQF1edm3tF4878&'
+            ),
+            Server(
+                name='4 Dao Yao Xing – Aliens Among Immortals episode 04 english sub',
+                link='https://geo.dailymotion.com/player.html?video=k1pc495vx8kqMHF43au&'
+            ),
+            Server(
+                name='3 Dao Yao Xing – Aliens Among Immortals episode 03 english sub',
+                link='https://geo.dailymotion.com/player.html?video=k5deiSNkYPPQzpF3YlS&'
+            ),
+            Server(
+                name='2 Dao Yao Xing – Aliens Among Immortals episode 02 english sub',
+                link='https://geo.dailymotion.com/player.html?video=k2JoQIatHcyRKIF3pYu&'
+            ),
+            Server(
+                name='1 Dao Yao Xing – Aliens Among Immortals episode 01 english sub',
+                link='https://geo.dailymotion.com/player.html?video=k4zFnLyQJrQWOaF3mH2&'
+            )
+        ]
+    ]
+)
+
+console.print(extract("https://geo.dailymotion.com/player.html?video=k4zFnLyQJrQWOaF3mH2&"))
+request = extract("https://geo.dailymotion.com/player.html?video=k4zFnLyQJrQWOaF3mH2&")
+request = request.get("requested_formats",[])
+console.print(request["http_headers"])
