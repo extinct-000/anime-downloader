@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup, Tag, ResultSet
 from rich.console import Console
 from aiohttp import ClientSession
 from asyncio import Semaphore
-from dataobj import Server, Season, Stream
+from ..dataobj import Server, Season, Stream
 
 from urllib.parse import quote, urlparse
 from Crypto.Cipher import ARC4
@@ -27,21 +27,38 @@ global_mux_semaphore: Semaphore = Semaphore(4)
 async def fetch_with_no_semaphore(
     url: str, session: ClientSession, params=None, headers=None, json: bool = False
 ) -> str:
-    async with session.get(url, params=params, headers=headers) as response:
-        if json:
-            return await response.json()
-        return await response.text()
+    delay = 1
+    for attempt in range(4):
+        try:
+            async with session.get(url, params=params, headers=headers) as response:
+                if json:
+                    return await response.json()
+                return await response.text()
+        except:
+            if attempt == 3:
+                raise
+            delay *= 2
+            await asyncio.sleep(delay)
 
 
 async def fetch_with_global_semaphore(
     url: str, session: ClientSession, params=None, headers=None, json: bool = False
 ) -> tuple[str, int]:
 
-    async with global_semaphore:
-        async with session.get(url, params=params, headers=headers) as response:
-            if json and "application/json" in response.content_type:
-                return await response.json(), response.status
-            return await response.text(), response.status
+    delay = 1
+    for attempt in range(4):
+        try:
+            async with global_semaphore:
+                console.print(1)
+                async with session.get(url, params=params, headers=headers) as response:
+                    if json and "application/json" in response.content_type:
+                        return await response.json(), response.status
+                    return await response.text(), response.status
+        except:
+            if attempt == 3:
+                raise
+            delay *= 2
+            await asyncio.sleep(delay)
 
 
 async def get_episode_servers(url: str, id: int, session: ClientSession) -> Season:
@@ -51,7 +68,7 @@ async def get_episode_servers(url: str, id: int, session: ClientSession) -> Seas
     if url_parse.hostname:
         hostname: str = url_parse.hostname
     else:
-        hostname = "animesuge.cz"
+        hostname = "animesuge.re"
 
     # scheme = url_parse.scheme
 
@@ -464,7 +481,7 @@ async def Scrape(url: str, session: ClientSession) -> Season:
 
 
 async def main():
-    url = "https://animesuge.cz/anime/rilakkuma-lxdgk/ep-9"
+    url = "https://animesuge.re/watch/the-ogre-s-bride-wdtjt/ep-6"
 
     # NOTE: Session must be created inside event loop
     session: ClientSession = ClientSession()

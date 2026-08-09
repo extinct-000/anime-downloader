@@ -16,7 +16,7 @@ from rich.console import Console
 from asyncio import Semaphore
 from aiohttp import ClientSession
 from tree_sitter import Query, Language, QueryCursor, Node, Tree, Parser
-from dataobj import Server, Season, Media
+from ..dataobj import Server, Season, Media
 from http import HTTPStatus
 
 
@@ -315,7 +315,10 @@ def get_all_seasons_crawl_link(soup: BeautifulSoup) -> list[Season]:
             return heading
 
         season: Season = Season(
-            name=heading.text, crawl_link=server, episode_server=[], episode=[]  # ty:ignore[unresolved-attribute]
+            name=heading.text,
+            crawl_link=server,
+            episode_server=[],
+            episode=[],  # ty:ignore[unresolved-attribute]
         )
 
         seasons.append(season)
