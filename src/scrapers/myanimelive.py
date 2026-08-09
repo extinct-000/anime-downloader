@@ -1,10 +1,11 @@
+from datetime import datetime, UTC
 from rich.console import Console
 
 from aiohttp import ClientSession
 from asyncio import Semaphore
 from yt_dlp.networking.impersonate import ImpersonateTarget
 
-from dataobj import Season, Server, Episode
+from ..dataobj import Season, Server, Episode
 from typing import Any, Coroutine
 from bs4.element import AttributeValueList
 from bs4 import BeautifulSoup, Tag, ResultSet
@@ -27,7 +28,7 @@ settings = {
     "click_handle": "1",
     "text": "Load more posts",
     "totop": "Scroll back to top",
-    "currentday": "06.04.26",
+    "currentday": datetime.now(UTC).strftime("%m.%d.%y"),
     "order": "DESC",
     "scripts": [],
     "styles": [],
@@ -178,8 +179,10 @@ async def fetch_data(session: ClientSession, url: str, data, headers: dict[str, 
                     if response.status == 429:
                         raise
                     return await response.json()
-        except:
+        except Exception as e:
             if attempt == 3:
+                print(f"An error occurred: {e}")
+                print(f"Exception type: {type(e).__name__}")
                 raise
             delay *= 2
             await asyncio.sleep(delay)
@@ -188,15 +191,17 @@ async def fetch_data(session: ClientSession, url: str, data, headers: dict[str, 
 async def fetch_(session: ClientSession, url: str):
     delay = 1
 
-    for attempt in range(4):
+    for attempt in range(6):
         try:
             async with global_first_phase:
                 async with session.get(url=url) as response:
                     if response.status == 429:
+                        console.print("STATUS : ", response.status)
+                        console.print("URL : ", url)
                         raise
                     return await response.text()
         except:
-            if attempt == 3:
+            if attempt == 5:
                 raise
             delay *= 2
             await asyncio.sleep(delay)

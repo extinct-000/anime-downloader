@@ -233,7 +233,7 @@ async def populate_episodes(
                     #     extract_link_vcloud(soup, http, urlparse(server.link))
                     # )
                     break
-        season.episode = await asyncio.gather(*tasks_episodes)
+        season.episode = await asyncio.gather(*tasks_episodes)  # ty:ignore[invalid-assignment]
 
     i = 1
     for season in seasons:
@@ -315,7 +315,7 @@ def get_all_seasons_crawl_link(soup: BeautifulSoup) -> list[Season]:
             return heading
 
         season: Season = Season(
-            name=heading.text, crawl_link=server, episode_server=[], episode=[]
+            name=heading.text, crawl_link=server, episode_server=[], episode=[]  # ty:ignore[unresolved-attribute]
         )
 
         seasons.append(season)
@@ -359,7 +359,7 @@ def get_all_seasons_crawl_link(soup: BeautifulSoup) -> list[Season]:
 
     # console.print(heading)
 
-    while "season" in (n := heading.text.lower()) and "B/E]".lower() in n:
+    while "season" in (n := heading.text.lower()) and "B/E]".lower() in n:  # ty:ignore[unresolved-attribute]
         # console.print(heading)
         heading = inner_helper(list_of_heading)
         if not heading:
@@ -378,8 +378,8 @@ def extract_link_filepress(
     http: PoolManager, url: str, response: BaseHTTPResponse
 ) -> str:
 
-    url2: str = response.url
-    url: str = response.url
+    url2: str = response.url  # ty:ignore[invalid-assignment]
+    url: str = response.url  # ty:ignore[invalid-assignment]
 
     # ---------------------
 
@@ -388,7 +388,7 @@ def extract_link_filepress(
     id: str = urlparsed.path.partition("file/")[-1]
 
     url = (
-        urlparsed.scheme + "://" + urlparsed.hostname + "/api/" + "file/" + "get/" + id
+        urlparsed.scheme + "://" + urlparsed.hostname + "/api/" + "file/" + "get/" + id  # ty:ignore[unsupported-operator]
     )
 
     # console.print((urlparsed.hostname))
@@ -405,7 +405,7 @@ def extract_link_filepress(
         "Accept-Language": "en-US,en;q=1.9",
         # "Accept-Encoding": "gzip, deflate, br, zstd",
         "Content-Type": "application/json",
-        "Origin": "https://" + urlparsed.hostname,
+        "Origin": "https://" + urlparsed.hostname,  # ty:ignore[unsupported-operator]
         "Sec-GPC": "2",
         "Connection": "keep-alive",
         "Referer": url2,
@@ -426,7 +426,7 @@ def extract_link_filepress(
         "GET",
         url=url,
         # json=json,
-        headers=headers,
+        headers=headers,  # ty:ignore[invalid-argument-type]
     )
 
     name: str = response.json()["data"]["name"]
@@ -441,15 +441,15 @@ def extract_link_filepress(
 
     response = http.request(
         "POST",
-        url=urlparsed.scheme + "://" + urlparsed.hostname + "/api/file/downlaod/",
-        headers=headers,
+        url=urlparsed.scheme + "://" + urlparsed.hostname + "/api/file/downlaod/",  # ty:ignore[unsupported-operator]
+        headers=headers,  # ty:ignore[invalid-argument-type]
         json=json,
     )
     download_id: str = response.json()["data"]["downloadId"]
     # console.print(response.json())
 
     new_referrer: str = (
-        urlparsed.scheme + "://" + urlparsed.hostname + "/download/" + name
+        urlparsed.scheme + "://" + urlparsed.hostname + "/download/" + name  # ty:ignore[unsupported-operator]
     )
     # console.print(new_referrer)
 
@@ -460,7 +460,7 @@ def extract_link_filepress(
         "Accept-Language": "en-US,en;q=0.9",
         # "Accept-Encoding": "gzip, deflate, br, zstd",
         "Content-Type": "application/json",
-        "Origin": "https://" + urlparsed.hostname,
+        "Origin": "https://" + urlparsed.hostname,  # ty:ignore[unsupported-operator]
         "Sec-GPC": "1",
         "Connection": "keep-alive",
         "Referer": new_referrer,
@@ -476,7 +476,7 @@ def extract_link_filepress(
         "id": download_id,
         "method": "cloudR2Downlaod",
     }
-    url = urlparsed.scheme + "://" + urlparsed.hostname + "/api/file/downlaod2/"
+    url = urlparsed.scheme + "://" + urlparsed.hostname + "/api/file/downlaod2/"  # ty:ignore[unsupported-operator]
 
     # console.print(url)
 
@@ -484,7 +484,7 @@ def extract_link_filepress(
         "POST",
         url=url,
         json=json2,
-        headers=headers,
+        headers=headers,  # ty:ignore[invalid-argument-type]
     )
 
     return response.json()["data"]
@@ -496,14 +496,14 @@ def extract_link_vcloud(
 
     script: Tag
 
-    code: str = None
+    code: str = None  # ty:ignore[invalid-assignment]
     # console.print(soup.find_all())
 
     for script in soup.find_all("script"):
         if (
             script
             and type(script.get("type")) == type("str")
-            and "text/javascript" in script.get("type")
+            and "text/javascript" in script.get("type")  # ty:ignore[unsupported-operator]
             and url_parsed.path in script.text
         ):
             # console.print(
@@ -556,11 +556,11 @@ def extract_link_vcloud(
     for atag in a:
         if (
             atag
-            and (html_class := atag.find_next("i").get("class"))
+            and (html_class := atag.find_next("i").get("class"))  # ty:ignore[unresolved-attribute]
             and download_identifier in html_class
         ):
-            if "pixeldrain" in atag.get("href"):
-                script: Tag = atag.find_next("script")
+            if "pixeldrain" in atag.get("href"):  # ty:ignore[unsupported-operator]
+                script: Tag = atag.find_next("script")  # ty:ignore[invalid-assignment]
 
                 script_text: bytes = script.text.encode("utf-8")
 
@@ -575,7 +575,7 @@ def extract_link_vcloud(
 
                 continue
 
-            list_of_server.append(Server(atag.text, atag.get("href")))
+            list_of_server.append(Server(atag.text, atag.get("href")))  # ty:ignore[invalid-argument-type]
             # console.print(atag)
 
     return list_of_server
@@ -671,8 +671,8 @@ def get_highest_1080p_firstphase_link(
         # console.print("+++++++++++++++++++++++++++++++++++++++++++")
     p = p.find_next("p")
 
-    for a in p.find_all("a"):
-        server.append(Server(a.text, a.get("href")))
+    for a in p.find_all("a"):  # ty:ignore[unresolved-attribute]
+        server.append(Server(a.text, a.get("href")))  # ty:ignore[invalid-argument-type]
 
     return heading, server, i
     # console.print(p.find_all("a")[0].text)
@@ -707,8 +707,8 @@ def parse_current_page_for_content(soup: BeautifulSoup):
         # console.print(a)
         href = a.get("href")
 
-        if href.startswith("https"):
-            url = urlparse(href)
+        if href.startswith("https"):  # ty:ignore[unresolved-attribute]
+            url = urlparse(href)  # ty:ignore[no-matching-overload]
 
             if url.path.startswith("/download"):
                 console.print(a.get("href"))
