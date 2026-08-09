@@ -191,17 +191,17 @@ async def fetch_data(session: ClientSession, url: str, data, headers: dict[str, 
 async def fetch_(session: ClientSession, url: str):
     delay = 1
 
-    for attempt in range(6):
+    for attempt in range(4):
         try:
             async with global_first_phase:
                 async with session.get(url=url) as response:
                     if response.status == 429:
                         console.print("STATUS : ", response.status)
                         console.print("URL : ", url)
-                        raise
+                        await asyncio.sleep(delay)
                     return await response.text()
         except:
-            if attempt == 5:
+            if attempt == 3:
                 raise
             delay *= 2
             await asyncio.sleep(delay)
