@@ -18,6 +18,13 @@ console: Console = Console()
 global_first_phase: Semaphore = Semaphore(4)
 global_ytdlp: Semaphore = Semaphore(4)
 
+
+#######################################################################
+
+#NOTE: 
+
+#######################################################################
+
 settings = {
     "id": "main",
     "ajaxurl": "https://myanime.live/?infinity=scrolling",
@@ -152,6 +159,11 @@ headers = {
 
 query = {}
 
+#######################################################################
+
+#NOTE: QUERY_ARGS
+
+#######################################################################
 
 def build_query(anime: str):
     return {
@@ -165,6 +177,22 @@ def build_query(anime: str):
         "last_post_date": settings["last_post_date"],
     }
 
+#######################################################################
+
+#NOTE: QUERY_ARGS
+
+#######################################################################
+
+def json_to_list(response: Any, name: str) -> list[str]:
+
+    list_of_uris: list[str] = []
+    new_name = name.replace(" ", "-").lower()
+
+    for key in response["postflair"].keys():
+        if new_name in key:
+            list_of_uris.append(key)
+
+    return list_of_uris
 
 async def fetch_data(session: ClientSession, url: str, data, headers: dict[str, str]):
     delay = 1
@@ -207,8 +235,12 @@ async def fetch_(session: ClientSession, url: str):
             await asyncio.sleep(delay)
 
 
-async def Scrape(name: str, session: ClientSession):
+#######################################################################
 
+#NOTE: QUERY_ARGs
+
+#######################################################################
+async def Scrape(name: str, session: ClientSession):
     response = await fetch_data(
         session=session,
         url="https://myanime.live/?infinity=scrolling",
@@ -249,17 +281,23 @@ async def Scrape(name: str, session: ClientSession):
                 episodes.append(
                     Episode(
                         name=f"{length - idx} " + value[1],
-                        video_link=best["url"],
-                        video_link_headers_dict=best["http_headers"],
+                        video_link=best["url"],  # ty: ignore[unknown-argument]
+                        video_link_headers_dict=best["http_headers"],  # ty: ignore[unknown-argument]
                         video_link_headers=[
                             f"{k}:{v}" for k, v in best["http_headers"].items()
-                        ],
+                        ],  # ty: ignore[unknown-argument]
                         sub_link="",
                         sub_link_headers=[],
-                    )
+                    )  # ty: ignore[missing-argument]
                 )
     return episodes, name
 
+
+#######################################################################
+
+#NOTE: QUERY_ARGs
+
+#######################################################################
 
 def get_best_format(formats):
     return max(
@@ -271,7 +309,6 @@ def get_best_format(formats):
         ),
     )
 
-
 def clean(name: str) -> str:
     invalid = '–<>:"/\\|?*-'
 
@@ -280,20 +317,11 @@ def clean(name: str) -> str:
 
     return name
 
+#######################################################################
 
-def extract(url):
+#NOTE: QUERY_ARGS
 
-    with yt_dlp.YoutubeDL({"format": "bv*+ba/b", "quiet": False}) as ydl:
-        info = ydl.extract_info(url, download=False)
-        return Episode(
-            name="",
-            video_link=info["url"],
-            video_link_headers_dict=info["http_headers"],
-            sub_link="",
-            sub_link_headers=[],
-            video_link_headers=[],
-        )
-
+#######################################################################
 
 async def extract_dailymotion_link(url: str, session: ClientSession):
 
@@ -318,18 +346,12 @@ async def extract_dailymotion_link(url: str, session: ClientSession):
     return "", name
 
 
-def json_to_list(response: Any, name: str) -> list[str]:
 
-    list_of_uris: list[str] = []
-    new_name = name.replace(" ", "-").lower()
+#######################################################################
 
-    for key in response["postflair"].keys():
-        if new_name in key:
-            list_of_uris.append(key)
+#NOTE: FOR DEBUGGING
 
-    return list_of_uris
-
-
+#######################################################################
 async def main():
     url = "https://myanime.live/?s=Renegade+Immortal"
 
@@ -339,20 +361,6 @@ async def main():
 
     result, _ = await Scrape(name=name, session=session)
     console.print(result)
-
-    # response = await fetch_(session=session, url=url)
-    # console.print(response)
-
-    # response = await fetch_data(
-    #     session=session,
-    #     url="https://myanime.live/?infinity=scrolling",
-    #     data=build_query(name),
-    #     headers=headers,
-    # )
-
-    # list_ = json_to_list(response, name)
-    #
-    # console.print(await extract_dailymotion_link(list_[0], session=session))
 
     await session.close()
 
