@@ -16,7 +16,7 @@ from rich.console import Console
 from asyncio import Semaphore
 from aiohttp import ClientSession
 from tree_sitter import Query, Language, QueryCursor, Node, Tree, Parser
-from ..dataobj import Server, Season, Media
+from ..Dataobj import Server, Season, Media
 from http import HTTPStatus
 
 

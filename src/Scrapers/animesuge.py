@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup, Tag, ResultSet
 from rich.console import Console
 from aiohttp import ClientSession
 from asyncio import Semaphore
-from ..dataobj import Server, Season, Stream
+from ..Dataobj import Server, Season, Stream
 
 from urllib.parse import quote, urlparse
 from Crypto.Cipher import ARC4

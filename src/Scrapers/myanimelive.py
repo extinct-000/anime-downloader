@@ -5,7 +5,7 @@ from aiohttp import ClientSession
 from asyncio import Semaphore
 from yt_dlp.networking.impersonate import ImpersonateTarget
 
-from ..dataobj import Season, Server, Episode
+from ..Dataobj import Season, Server, Episode
 from typing import Any, Coroutine
 from bs4.element import AttributeValueList
 from bs4 import BeautifulSoup, Tag, ResultSet
