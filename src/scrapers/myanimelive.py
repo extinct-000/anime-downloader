@@ -249,9 +249,9 @@ async def Scrape(name: str, session: ClientSession):
                 episodes.append(
                     Episode(
                         name=f"{length - idx} " + value[1],
-                        episode_link=best["url"],
-                        episode_link_headers_dict=best["http_headers"],
-                        episode_link_headers=[
+                        video_link=best["url"],
+                        video_link_headers_dict=best["http_headers"],
+                        video_link_headers=[
                             f"{k}:{v}" for k, v in best["http_headers"].items()
                         ],
                         sub_link="",
@@ -287,11 +287,11 @@ def extract(url):
         info = ydl.extract_info(url, download=False)
         return Episode(
             name="",
-            episode_link=info["url"],
-            episode_link_headers_dict=info["http_headers"],
+            video_link=info["url"],
+            video_link_headers_dict=info["http_headers"],
             sub_link="",
             sub_link_headers=[],
-            episode_link_headers=[],
+            video_link_headers=[],
         )
 
 

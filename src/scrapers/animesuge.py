@@ -270,9 +270,9 @@ async def extract_megaplay(
     session: ClientSession,
     name: str = "Episode",
     server_name: str = "Unkown",
-):
+) -> Stream:
     # GET
-    # https://animesuge.cz/ajax/server?get=MTF1dkFtaW9BRTZPbzJJRElFZUZrOWdjeldjOERLaWNMMXFNbVB3WUJqK1JNM1ByWFJ6Mlpicnp2TE5VY0tGMlZkNlFSaWVSa1Roa1FKcjZtS0tlQmc9PQ
+    # https:[//animesuge.cz/ajax/server?get=MTF1dkFtaW9BRTZPbzJJRElFZUZrOWdjeldjOERLaWNMMXFNbVB3WUJqK1JNM1ByWFJ6Mlpicnp2TE5VY0tGMlZkNlFSaWVSa1Roa1FKcjZtS0tlQmc9PQ
 
     header = {"X-Requested-With": "XMLHttpRequest"}
     headers_referrer = {"Referer": "https://animesuge.cz/"}
