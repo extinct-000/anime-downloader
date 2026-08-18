@@ -230,6 +230,8 @@ async def Scrape(name: str, session: ClientSession):
 
     result = await asyncio.gather(*tasks)  # ty:ignore[invalid-assignment]
 
+    console.print(result)
+
     length = len(result)
 
     episodes: list[Episode] = []
@@ -237,24 +239,25 @@ async def Scrape(name: str, session: ClientSession):
     with yt_dlp.YoutubeDL(
         {
             "quiet": True,
-            "impersonate": ImpersonateTarget.from_str("chrome-136"),
+            "impersonate": ImpersonateTarget.from_str("chrome-146"),
         }
     ) as ydl:
         for idx, value in enumerate(result):
-            info = ydl.extract_info(value[0], download=False)
-            best = get_best_format(info["formats"])
-            episodes.append(
-                Episode(
-                    name=f"{length - idx} " + value[1],
-                    episode_link=best["url"],
-                    episode_link_headers_dict=best["http_headers"],
-                    episode_link_headers=[
-                        f"{k}:{v}" for k, v in best["http_headers"].items()
-                    ],
-                    sub_link="",
-                    sub_link_headers=[],
+            if value[0]:
+                info = ydl.extract_info(value[0], download=False)
+                best = get_best_format(info["formats"])
+                episodes.append(
+                    Episode(
+                        name=f"{length - idx} " + value[1],
+                        episode_link=best["url"],
+                        episode_link_headers_dict=best["http_headers"],
+                        episode_link_headers=[
+                            f"{k}:{v}" for k, v in best["http_headers"].items()
+                        ],
+                        sub_link="",
+                        sub_link_headers=[],
+                    )
                 )
-            )
     return episodes, name
 
 
@@ -302,11 +305,16 @@ async def extract_dailymotion_link(url: str, session: ClientSession):
     name = clean(soup.find("h1").text)  # ty:ignore[unresolved-attribute]
 
     if n := soup.find_all("iframe"):
-        return n[0].get("src"), name
+        for tag in n:
+            uri = tag.get("src")
+            if "dailymotion" in uri:  # ty: ignore[unsupported-operator]
+                return uri, name
 
     if n := soup.find_all("video"):
-        return n[0].get("src"), name
-    # console.print(url, soup)
+        for tag in n:
+            uri = tag.get("src")
+            if "dailymotion" in uri:  # ty: ignore[unsupported-operator]
+                return uri, name
     return "", name
 
 
