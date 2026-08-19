@@ -1,4 +1,4 @@
-import scrapers.myanimelive
+import Scrapers.myanimelive
 import aiohttp
 import sys
 from m3u8.model import InitializationSection
@@ -9,7 +9,7 @@ from aiohttp import (
     TCPConnector,
     ClientConnectionResetError,
 )
-from scrapers.animesuge import Scrape
+from Scrapers.animesuge import Scrape
 from rich.console import Console
 from asyncio import Semaphore
 from asyncio.subprocess import Process
@@ -17,8 +17,8 @@ from pathlib import Path
 from urllib.parse import urljoin
 from dataclasses import dataclass
 from m3u8 import M3U8
-from dataobj import Season, Stream, Server
-from scrapers.myanimelive import Scrape as myanime
+from Dataobj import Season, Stream, Server
+from Scrapers.myanimelive import Scrape as myanime
 
 import aria2p.api
 import asyncio

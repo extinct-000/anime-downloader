@@ -5,7 +5,7 @@ from aiohttp import ClientSession
 from asyncio import Semaphore
 from yt_dlp.networking.impersonate import ImpersonateTarget
 
-from ..Dataobj import Season, Server, Episode
+from Dataobj import Season, Server, Episode
 from typing import Any, Coroutine
 from bs4.element import AttributeValueList
 from bs4 import BeautifulSoup, Tag, ResultSet
@@ -21,7 +21,7 @@ global_ytdlp: Semaphore = Semaphore(4)
 
 #######################################################################
 
-#NOTE: 
+# NOTE:
 
 #######################################################################
 
@@ -139,18 +139,20 @@ settings = {
 }
 
 headers = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:151.0) Gecko/20100101 Firefox/151.0",
+    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
     "Accept": "*/*",
     "Accept-Language": "en-US,en;q=0.9",
     "Accept-Encoding": "gzip, deflate, br, zstd",
     "X-Requested-With": "XMLHttpRequest",
-    "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+    # "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
     "Origin": "https://myanime.live",
     "Sec-GPC": "1",
     "Alt-Used": "myanime.live",
+    "sec-ch-ua-platform": "Linux",
     "Connection": "keep-alive",
+    "sec-fetch-dest": "document",
     "Referer": "https://myanime.live/?s=Renegade+Immortal",
-    "Cookie": "cf_clearance=alxPiglajOtKBC4ib7gFPryCDfa3OaUnCloobHyRNXc-1780900393-1.2.1.1-VlNLC.duH64_DopD276hp4S7S_HzlwiKaJrYrn8x8zrg4AOzRx66qVeLMFgf_vmfBTbXnyV124NJGw.bdt59QOQyVgBYh8LbHkxIPUxss8FCkCdKaRvviU8ftlLikBlHXglop_g2seJZ.DS6u54opWGV.FUZEFUvY_OHnP32rISZB1MPRE7gTl4ZRFOfuJjXAyyURb7gKw62hAZFT.fXXKZUHDUfxNDOoF5F5duGEKGT0dJCykyxq5IYeefkSDiKyFSPbOISPOeRZVjPn9Fa5qiTP7NkG5eR22QUuRzOEt8wVyy3Rp_NgqCzS7zcxbr51nxzUbIYSzqGstUhrpz56g",
+    "Cookie": "cf_clearance=J4ewRP4rAnG4jdmpYJoBPcUVC1g7gVoB9BbxEzaF3eU-1787140871-1.2.1.1-NIcasJQ_0NDKfeeBg6qbICAmOpn7Fg3NYzIPR8yJAvLWbgXms8fxVDumAGTfd0bdg0l65lWC5LxFawNU3NyQKREDaQIzrRoD8UIVBcFfJUs6OZ1sDvopiBvyvz4P5OJ3szu.5Cs3EEbTmkAf5GUuPnCSpIvhv4bEt7t.vITsthCicV1UBNrjmvCNVfXERQnef4k0EQRku86P7ZWpoHpy6OKmwOdvxxbwQbtAkpNFh2T.2bWmdwRybex2uBLUGZBAPejfDD.5WaHAml9ppVrRileKyqUh9FRYcRJKgb.nigKXDffOcFkH7Thy0VEynAeR5aDJFk1pIoU5RNDnpZDcifr1dhrlJbCXIbQh8fReW8Y",
     "Sec-Fetch-Dest": "empty",
     "Sec-Fetch-Mode": "cors",
     "Sec-Fetch-Site": "same-origin",
@@ -161,9 +163,10 @@ query = {}
 
 #######################################################################
 
-#NOTE: QUERY_ARGS
+# NOTE: QUERY_ARGS
 
 #######################################################################
+
 
 def build_query(anime: str):
     return {
@@ -177,11 +180,13 @@ def build_query(anime: str):
         "last_post_date": settings["last_post_date"],
     }
 
-#######################################################################
-
-#NOTE: QUERY_ARGS
 
 #######################################################################
+
+# NOTE: QUERY_ARGS
+
+#######################################################################
+
 
 def json_to_list(response: Any, name: str) -> list[str]:
 
@@ -194,19 +199,17 @@ def json_to_list(response: Any, name: str) -> list[str]:
 
     return list_of_uris
 
+
 async def fetch_data(session: ClientSession, url: str, data, headers: dict[str, str]):
     delay = 1
 
     for attempt in range(4):
         try:
-            async with global_first_phase:
-                async with session.post(
-                    url=url, data=data, headers=headers
-                ) as response:
-                    console.print(response.status)
-                    if response.status == 429:
-                        raise
-                    return await response.json()
+            async with session.post(url=url, data=data, headers=headers) as response:
+                console.print(response.status)
+                if response.status == 429:
+                    raise
+                return await response.json()
         except Exception as e:
             if attempt == 3:
                 print(f"An error occurred: {e}")
@@ -219,7 +222,7 @@ async def fetch_data(session: ClientSession, url: str, data, headers: dict[str, 
 async def fetch_(session: ClientSession, url: str):
     delay = 1
 
-    for attempt in range(4):
+    for attempt in range(3):
         try:
             async with global_first_phase:
                 async with session.get(url=url) as response:
@@ -237,7 +240,8 @@ async def fetch_(session: ClientSession, url: str):
 
 #######################################################################
 
-#NOTE: QUERY_ARGs
+# NOTE: QUERY_ARGs
+
 
 #######################################################################
 async def Scrape(name: str, session: ClientSession):
@@ -295,9 +299,10 @@ async def Scrape(name: str, session: ClientSession):
 
 #######################################################################
 
-#NOTE: QUERY_ARGs
+# NOTE: QUERY_ARGs
 
 #######################################################################
+
 
 def get_best_format(formats):
     return max(
@@ -309,6 +314,7 @@ def get_best_format(formats):
         ),
     )
 
+
 def clean(name: str) -> str:
     invalid = '–<>:"/\\|?*-'
 
@@ -317,11 +323,13 @@ def clean(name: str) -> str:
 
     return name
 
-#######################################################################
-
-#NOTE: QUERY_ARGS
 
 #######################################################################
+
+# NOTE: QUERY_ARGS
+
+#######################################################################
+
 
 async def extract_dailymotion_link(url: str, session: ClientSession):
 
@@ -346,10 +354,10 @@ async def extract_dailymotion_link(url: str, session: ClientSession):
     return "", name
 
 
-
 #######################################################################
 
-#NOTE: FOR DEBUGGING
+# NOTE: FOR DEBUGGING
+
 
 #######################################################################
 async def main():

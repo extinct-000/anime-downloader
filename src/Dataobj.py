@@ -5,9 +5,9 @@ from dataclasses import dataclass
 @dataclass
 class Episode:
     name: str
-    episode_link: str
-    episode_link_headers: list[str]
-    episode_link_headers_dict: dict[str, str]
+    video_link: str
+    video_link_headers: list[str]
+    video_link_headers_dict: dict[str, str]
     sub_link: str
     sub_link_headers: list[str]
 
