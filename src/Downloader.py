@@ -445,59 +445,6 @@ async def mux(filename: str, segment: str, temp_: Path, subtitle: str, dir_: Pat
         shutil.rmtree(temp, ignore_errors=True)
 
 
-async def mux(filename: str, subtitle: str, dir_: Path):
-
-    console.print("It is Working MUX")
-
-    console.print(f"[yellow]Mux {filename}")
-
-    mp4: Path = dir_ / (filename + ".mp4")
-    vtt: Path = dir_ / (filename + ".vtt")
-    mkv: Path = dir_ / (filename + ".mkv")
-
-    if subtitle:
-        cmd: list[str] = [
-            "ffmpeg",
-            "-y",
-            "-i",
-            str(mp4),
-            "-i",
-            str(vtt),
-            "-map",
-            "0",
-            "-map",
-            "1",
-            "-c",
-            "copy",
-            "-c:s",
-            "webvtt",
-            "-disposition:s:0",
-            "default",
-            str(mkv),
-        ]
-    else:
-        cmd: list[str] = [
-            "ffmpeg",
-            "-y",
-            "-fflags",
-            "+genpts",
-            "-i",
-            str(mp4),
-            "-c",
-            "copy",
-            str(mkv),
-        ]
-
-    async with global_mux_semaphore:
-        await run(cmd)
-
-    if mkv.exists():
-        mp4.unlink(missing_ok=True)
-        vtt.unlink(missing_ok=True)
-
-    console.print(f"[bold green]Done{filename}")
-
-
 def clean(name: str) -> str:
     invalid = '–<>:"/\\|?*-'
 
@@ -992,13 +939,13 @@ async def aria_downloader(
     async with global_video_semaphore:
         await asyncio.gather(
             *(
-                asyncio.to_thread(strip_png_wrapper_v2, Path(temp / map.uri))  # ty:ignore[unresolved-attribute]
+                asyncio.to_thread(strip_png_wrapper, Path(temp / map.uri))  # ty:ignore[unresolved-attribute]
                 for map in playlist.segment_map
             )
         )
         await asyncio.gather(
             *(
-                asyncio.to_thread(strip_png_wrapper_v2, Path(temp / seg))
+                asyncio.to_thread(strip_png_wrapper, Path(temp / seg))
                 for seg in playlist.segments.uri
             )
         )
@@ -1006,7 +953,7 @@ async def aria_downloader(
     return filename, temp, str(segment_txt)
 
 
-def strip_png_wrapper_v2(path: Path):
+def strip_png_wrapper(path: Path):
     """Fix both types of corruption: extra byte + full PNG wrapper"""
 
     if not path.exists():
@@ -1063,55 +1010,6 @@ def strip_png_wrapper_v2(path: Path):
             return
 
         print(f"⚠ No change needed or unrecognized format: {path.name}")
-
-
-# NOTE: I don't usually comment this adhoc scripts but this is quite forgetful for future me.
-def strip_png_wrapper(path: Path):
-    # NOTE: This is a blocking task like file.read() will block the event loop till I/O Operations better-use asyncio.create_thread
-
-    with open(path, "rb+") as file:
-        # NOTE: This reads 4KB into the MEMORY
-        data = file.read(10240)
-
-        if data.startswith(b"\x89PNG\r\n\x1a\n"):
-            iend = data.find(b"IEND")
-            if iend == -1:
-                return
-            payload_ptr = iend + 8
-
-            file.seek(payload_ptr)
-            payload = file.read()
-
-            file.seek(0)
-            file.write(payload)
-            file.truncate()
-            return
-
-        # NOTE: newline, CRLF
-        bad_prefixes = [b"\x0a", b"\x0d\x0a"]
-
-        for prefix in bad_prefixes:
-            if data.startswith(prefix):
-                file.seek(len(prefix))
-                payload = file.read()
-                file.seek(0)
-                file.write(payload)
-                file.truncate()
-
-        # NOTE: Look for ftyp box (MP4 start)
-        data = file.read(2048)
-        ftyp_pos = data.find(b"ftyp")
-
-        # NOTE: Found but not at start
-        if ftyp_pos > 0 and ftyp_pos < 32:
-            # NOTE: Go back to box size
-            file.seek(ftyp_pos - 4)
-            payload = file.read()
-            file.seek(0)
-            file.write(payload)
-            file.truncate()
-            return
-
 
 if __name__ == "__main__":
     asyncio.run(main())
