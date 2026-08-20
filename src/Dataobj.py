@@ -11,17 +11,22 @@ class Episode:
     video_link: str
     video_link_headers: list[str]
     video_link_headers_dict: dict[str, str]
+    audio_link: str
+    audio_link_headers: list[str]
+    audio_link_headers_dict: dict[str, str]
     # audio_link: str
     sub_link: str
     sub_link_headers: list[str]
+    direct: bool  # True for Direct & False for Stream
+
 
 @dataclass
 class CTX:
-    episode: Episode
     dir_: Path
     session: ClientSession
     client: aria2p.Client
     aria: aria2p.API
+
 
 @dataclass
 class Media:
