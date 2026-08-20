@@ -266,7 +266,7 @@ async def Scrape(name: str, session: ClientSession):
 
     result = await asyncio.gather(*tasks)  # ty:ignore[invalid-assignment]
 
-    console.print(result)
+    # console.print(result)
 
     length = len(result)
 
