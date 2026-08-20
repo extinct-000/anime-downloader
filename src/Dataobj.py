@@ -1,5 +1,8 @@
+import aria2p
+from aiohttp import ClientSession
 from typing import Literal
 from dataclasses import dataclass
+from pathlib import Path
 
 
 @dataclass
@@ -8,9 +11,17 @@ class Episode:
     video_link: str
     video_link_headers: list[str]
     video_link_headers_dict: dict[str, str]
+    # audio_link: str
     sub_link: str
     sub_link_headers: list[str]
 
+@dataclass
+class CTX:
+    episode: Episode
+    dir_: Path
+    session: ClientSession
+    client: aria2p.Client
+    aria: aria2p.API
 
 @dataclass
 class Media:
