@@ -270,6 +270,12 @@ async def process_episode(
     aria: aria2p.API,
 ):
 
+    if not episode.video_link:
+        return None
+
+    if episode.direct:
+        return await aria_direct(episode=episode, dir_=dir_, aria=aria, client=client)
+
     video_task = asyncio.create_task(
         aria_stream(
             episode=episode, session=session, dir_=dir_, client=client, aria=aria
@@ -331,7 +337,6 @@ async def aria_direct(
         return ""
 
     filename: str = episode.name
-
 
     temp: Path = dir_ / filename
 
@@ -637,7 +642,6 @@ async def to_Episode(
 
 async def startup(session: ClientSession, season: Season):
 
-
     links = []
     for stream in season.episode[0]:
         headers = {
@@ -681,7 +685,6 @@ async def pipeline2(
 
     aria, client, process = await init_aria()  # ty:ignore[not-iterable]
 
-
     for episode in episodes:
         console.print(episode)
         task = asyncio.create_task(
@@ -708,7 +711,6 @@ async def pipeline(season: Season, session: ClientSession, dir_: Path):
     tasks = []
 
     aria, client, process = await init_aria()  # ty:ignore[not-iterable]
-
 
     for idx, streams in enumerate(season.episode):
         task = asyncio.create_task(
@@ -771,14 +773,8 @@ async def fetch_with_no_semaphore(
     return response.status
 
 
-# async def get_size(
-#     url: str,
-#     session: ClientSession,
-#     headers: dict[str, str],
-# ) -> int:
-#
-#     async with session.head(url, headers=headers) as resp:
-#         return int(resp.headers.get("Content-Length", 0))
+def prepare_playlist():
+    pass
 
 
 async def aria_stream(
@@ -795,22 +791,11 @@ async def aria_stream(
         headers=episode.video_link_headers_dict,
     )
 
-    # async with session.get(
-    #     url="https://cdn.mewstream.buzz/anime/33c14ab38a8923e563e17b79e41693ba/b643ba74799b456c16464224dc8a1748/index-f1.m3u8",
-    #     session=session,
-    #     headers=episode.episode_link_headers_dict,
-    # ) as resss:
-    #     console.print(await resss.text())
-
     console.print(response)
 
     dir_.mkdir(exist_ok=True)
 
-    # console.print(episode)
-
     filename: str = clean(episode.name)
-
-    # filename: str = f"{str(idx)} {filename}"
 
     temp: Path = dir_ / filename
 
@@ -1010,6 +995,7 @@ def strip_png_wrapper(path: Path):
             return
 
         print(f"⚠ No change needed or unrecognized format: {path.name}")
+
 
 if __name__ == "__main__":
     asyncio.run(main())
