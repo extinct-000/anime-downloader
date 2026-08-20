@@ -17,7 +17,7 @@ from pathlib import Path
 from urllib.parse import urljoin
 from dataclasses import dataclass
 from m3u8 import M3U8
-from Dataobj import Season, Stream, Server
+from Dataobj import Season, Stream, Server, Episode, CTX
 from Scrapers.myanimelive import Scrape as myanime
 
 import aria2p.api
