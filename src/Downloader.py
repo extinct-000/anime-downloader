@@ -271,12 +271,12 @@ async def process_episode(
 ):
 
     video_task = asyncio.create_task(
-        aria_downloader(
+        aria_stream(
             episode=episode, session=session, dir_=dir_, client=client, aria=aria
         )
     )
     subtitle_task = asyncio.create_task(
-        aria_sub_downloader(episode=episode, dir_=dir_, aria=aria, client=client)
+        aria_direct(episode=episode, dir_=dir_, aria=aria, client=client)
         # download_subtitle(idx=idx, episode=episode, dir_=dir_)
     )
 
@@ -323,7 +323,7 @@ async def download_video(idx: int, episode: Episode, dir_: Path) -> str:
     return filename
 
 
-async def aria_sub_downloader(
+async def aria_direct(
     episode: Episode, dir_: Path, aria: aria2p.API, client: aria2p.Client
 ) -> str:
 
@@ -781,7 +781,7 @@ async def fetch_with_no_semaphore(
 #         return int(resp.headers.get("Content-Length", 0))
 
 
-async def aria_downloader(
+async def aria_stream(
     episode: Episode,
     session: ClientSession,
     dir_: Path,
