@@ -388,15 +388,11 @@ async def download_subtitle(idx: int, episode: Episode, dir_: Path) -> str:
 
     async with global_subtitle_semaphore:
         await run(cmd)
-    # async with session.get(stream.sub_link, headers=headers) as response:
-    #     with open(path, "wb") as file:
-    #         async for chunk in response.content.iter_chunked(65536):
-    #             file.write(chunk)
 
     return filename
 
 
-async def mux_v2(filename: str, segment: str, temp_: Path, subtitle: str, dir_: Path):
+async def mux(filename: str, segment: str, temp_: Path, subtitle: str, dir_: Path):
 
     temp = dir_ / temp_
 
@@ -676,9 +672,9 @@ async def to_Episode(
 
     episode: Episode = Episode(
         name=f"{str(idx)} {clean(name)}",
-        episode_link=video["uri"],  # ty:ignore[invalid-argument-type]
-        episode_link_headers=[f"{k}:{v}" for k, v in video["headers"].items()],  # ty:ignore[unresolved-attribute]
-        episode_link_headers_dict=video["headers"],  # ty:ignore[invalid-argument-type]
+        video_link=video["uri"],  # ty:ignore[invalid-argument-type]
+        video_link_headers=[f"{k}:{v}" for k, v in video["headers"].items()],  # ty:ignore[unresolved-attribute]
+        video_link_headers_dict=video["headers"],  # ty:ignore[invalid-argument-type]
         sub_link=sub.sub_link,
         sub_link_headers=[f"Origin:{sub.referrer}", f"Referer:{sub.referrer}/"],
     )
@@ -847,9 +843,9 @@ async def aria_downloader(
 ) -> tuple[str, Path, str]:
 
     response = await fetch_with_no_semaphore(
-        url=episode.episode_link,
+        url=episode.video_link,
         session=session,
-        headers=episode.episode_link_headers_dict,
+        headers=episode.video_link_headers_dict,
     )
 
     # async with session.get(
@@ -904,11 +900,11 @@ async def aria_downloader(
             {
                 "methodName": "aria2.addUri",
                 "params": [
-                    [urljoin(episode.episode_link, resolved_url)],
+                    [urljoin(episode.video_link, resolved_url)],
                     {
                         "dir": str(temp),
                         "out": out,
-                        "header": episode.episode_link_headers,
+                        "header": episode.video_link_headers,
                     },
                 ],
             }
@@ -927,11 +923,11 @@ async def aria_downloader(
             {
                 "methodName": "aria2.addUri",
                 "params": [
-                    [urljoin(episode.episode_link, map.uri)],  # ty:ignore[unresolved-attribute]
+                    [urljoin(episode.video_link, map.uri)],  # ty:ignore[unresolved-attribute]
                     {
                         "dir": str(temp),
                         "out": out,
-                        "header": episode.episode_link_headers,
+                        "header": episode.video_link_headers,
                     },
                 ],
             }
