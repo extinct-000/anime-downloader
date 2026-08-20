@@ -60,16 +60,6 @@ global_headers = {
 }
 
 
-@dataclass
-class Episode:
-    name: str
-    episode_link: str
-    episode_link_headers: list[str]
-    episode_link_headers_dict: dict[str, str]
-    sub_link: str
-    sub_link_headers: list[str]
-
-
 global_video_semaphore: Semaphore = Semaphore(3)
 global_mux_semaphore: Semaphore = Semaphore(4)
 global_validation_semaphore: Semaphore = Semaphore(10)
@@ -284,7 +274,6 @@ async def process_episode(
         aria_downloader(
             episode=episode, session=session, dir_=dir_, client=client, aria=aria
         )
-        # download_video(idx=idx, episode=episode, dir_=dir_)
     )
     subtitle_task = asyncio.create_task(
         aria_sub_downloader(episode=episode, dir_=dir_, aria=aria, client=client)
@@ -295,9 +284,7 @@ async def process_episode(
 
     filename, temp_, segment = video_result_tuple
 
-    return await mux_v2(filename, segment, temp_, subtitle, dir_)
-    # return await mux(filename, subtitle, dir_=dir_)
-    # return asyncio.create_task(mux(filename, dir_=dir_))
+    return await mux(filename, segment, temp_, subtitle, dir_)
 
 
 async def download_video(idx: int, episode: Episode, dir_: Path) -> str:
@@ -309,21 +296,21 @@ async def download_video(idx: int, episode: Episode, dir_: Path) -> str:
 
     cmd = [
         "yt-dlp",
-        episode.episode_link,
+        episode.video_link,
         "-o",
         output,
         "-N",
         "4",
         "--add-header",
-        f"Origin:{episode.episode_link_headers['Origin']}",  # ty:ignore[invalid-argument-type]
+        f"Origin:{episode.video_link_headers['Origin']}",  # ty:ignore[invalid-argument-type]
         "--add-header",
-        f"Referer:{episode.episode_link_headers['Referer']}",  # ty:ignore[invalid-argument-type]
+        f"Referer:{episode.video_link_headers['Referer']}",  # ty:ignore[invalid-argument-type]
         "--external-downloader",
         "aria2c",
         "--external-downloader-args",
         "--check-certificate=false "
-        f"--header=Origin:{episode.episode_link_headers['Origin']}"  # ty:ignore[invalid-argument-type]
-        f"--header=Referer:{episode.episode_link_headers['Referer']}/"  # ty:ignore[invalid-argument-type]
+        f"--header=Origin:{episode.video_link_headers['Origin']}"  # ty:ignore[invalid-argument-type]
+        f"--header=Referer:{episode.video_link_headers['Referer']}/"  # ty:ignore[invalid-argument-type]
         f"--header=User-Agent:Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0"
         "-x1 -s1 -j100 -k32M",
     ]
@@ -345,7 +332,6 @@ async def aria_sub_downloader(
 
     filename: str = episode.name
 
-    # path: Path = dir_ / (str(idx) + " " + filename + ".vtt")
 
     temp: Path = dir_ / filename
 
@@ -369,7 +355,6 @@ async def aria_sub_downloader(
         while not dl.is_complete:  # ty:ignore[unresolved-attribute]
             if not dl.update():
                 break
-            await asyncio.sleep(1)
 
         console.print(f"[bold yellow]The sub file {filename} has completed[/]")
 
@@ -384,11 +369,6 @@ async def download_subtitle(idx: int, episode: Episode, dir_: Path) -> str:
     filename: str = clean(episode.name)
     path: Path = dir_ / (str(idx) + " " + filename + ".vtt")
 
-    # headers: dict[str, str] = {
-    #     "Origin": stream.referrer,
-    #     "Referer": f"{stream.referrer}/",
-    #     "User-Agent": "Mozilla/5.0",
-    # }
     console.print(f"[cyan]Subtitle {filename}")
 
     cmd = [
@@ -598,7 +578,7 @@ async def m3u8_validate_(
         tasks.append(
             asyncio.create_task(
                 fetch_with_global_last_phase_validation_semaphore_validation_(
-                    url=stream["uri"],
+                    url=stream["uri"],  # ty: ignore[invalid-argument-type]
                     headers=headers,
                     session=session,  # ty:ignore[invalid-argument-type]
                 )
@@ -686,7 +666,6 @@ async def to_Episode(
 
     # NOTE: Very important for now , if there is no valid episode link to download then what's the point of subtitle
 
-    # console.print(result_video)
     if not video:
         return
 
@@ -708,7 +687,6 @@ async def to_Episode(
     console.print(episode)
     console.print("____________________________________________________--")
 
-    # return episode
     return await process_episode(
         episode=episode, dir_=dir_, session=session, client=client, aria=aria
     )
@@ -716,7 +694,6 @@ async def to_Episode(
 
 async def startup(session: ClientSession, season: Season):
 
-    # response = await fetch_with_no_semaphore()
 
     links = []
     for stream in season.episode[0]:
@@ -759,22 +736,8 @@ async def pipeline2(
 
     tasks = []
 
-    # conn = await startup(session, season)
     aria, client, process = await init_aria()  # ty:ignore[not-iterable]
 
-    # idx = 10
-    # task = asyncio.create_task(
-    #     to_Episode(
-    #         streams=season.episode[idx - 1],  # ty:ignore[invalid-argument-type]
-    #         idx=idx + 1,
-    #         name=season.crawl_link[idx - 1].name,
-    #         session=session,
-    #         dir_=dir_,
-    #         client=client,
-    #         aria=aria,
-    #     )
-    # )
-    # tasks.append(task)
 
     for episode in episodes:
         console.print(episode)
@@ -801,22 +764,8 @@ async def pipeline(season: Season, session: ClientSession, dir_: Path):
 
     tasks = []
 
-    # conn = await startup(session, season)
     aria, client, process = await init_aria()  # ty:ignore[not-iterable]
 
-    # idx = 10
-    # task = asyncio.create_task(
-    #     to_Episode(
-    #         streams=season.episode[idx - 1],  # ty:ignore[invalid-argument-type]
-    #         idx=idx + 1,
-    #         name=season.crawl_link[idx - 1].name,
-    #         session=session,
-    #         dir_=dir_,
-    #         client=client,
-    #         aria=aria,
-    #     )
-    # )
-    # tasks.append(task)
 
     for idx, streams in enumerate(season.episode):
         task = asyncio.create_task(
@@ -853,30 +802,6 @@ async def main():
         session=session,
         dir_=Path("C:/Users/coolk/Videos/Anime/"),
     )
-
-    # url = "https://animesuge.cz/anime/tales-of-demons-and-gods-season-8-tivll/ep-2"
-    # # url = "https://animesuge.cz/anime/monster-eater-pi2f3/ep-10"
-    #
-    # #
-    # season: Season = await Scrape(url, session)
-    # console.print(season)
-    # # await init()
-    #
-    # await pipeline(
-    #     season=season, session=session, dir_=Path("C:/Users/coolk/Videos/Anime/")
-    # )
-    # console.print("this is inside downloader.py")
-
-    # await init()
-    # episode = await to_Episode(streams=season.episode[8],idx=9,name="something",session=session,dir_=Path("C:/Users/coolk/Videos/Anime/test/"),client=client,aria=aria)
-
-    # filename , temp , segment = await aria_downloader(idx = 2, episode=episode,session=session,dir_=Path("C:/Users/coolk/Videos/Anime/test/"),client=client,aria=aria)
-
-    # await mux_v2(filename=filename , segment=segment,temp_=temp,subtitle="",dir_=Path("C:/Users/coolk/Videos/Anime/test/"))
-    # console.print(episode)
-
-    # await aria_sub_downloader(episode=episode,dir_=Path("C:/Users/coolk/Videos/Anime/test/"),aria=aria,client=client)
-    # console.print(episode)
 
     await session.close()
 
