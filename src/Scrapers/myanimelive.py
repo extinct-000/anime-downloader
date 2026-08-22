@@ -291,7 +291,7 @@ async def Scrape(name: str, session: ClientSession):
                             f"{k}:{v}" for k, v in best["http_headers"].items()
                         ],  # ty: ignore[unknown-argument]
                         sub_link="",
-                        sub_link_headers=[],
+                        sub_headers=[],
                     )  # ty: ignore[missing-argument]
                 )
     return episodes, name
