@@ -5,19 +5,33 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
+# FIXME: Refactor the vegamovie.py for the new Stream Implementation
+@dataclass
+class Stream:
+    link: str
+    headers: list[str]
+    headers_dict: dict[str, str]
+
+
+@dataclass
+class Direct:
+    link: str
+    headers: list[str]
+
+
+@dataclass
+class Mux_Info_:
+    filename: str
+    temp: Path
+    m3u8_segments_local: str
+
+
 @dataclass
 class Episode:
-    name: str
-    video_link: str
-    video_link_headers: list[str]
-    video_link_headers_dict: dict[str, str]
-    audio_link: str
-    audio_link_headers: list[str]
-    audio_link_headers_dict: dict[str, str]
-    # audio_link: str
-    sub_link: str
-    sub_link_headers: list[str]
-    direct: bool  # True for Direct & False for Stream
+    name: str  # use the clean function from the utils to remove problematics filenames e.g episode.name = clean(episode.name)
+    video: Stream | Direct | None
+    audio: Stream | None
+    subtitle: Direct | None
 
 
 @dataclass
@@ -39,15 +53,6 @@ class Media:
 class Server:
     name: str
     link: str
-
-
-@dataclass
-class Stream:
-    name: str
-    episode_name: str
-    link: str
-    sub_link: str
-    referrer: str
 
 
 @dataclass
