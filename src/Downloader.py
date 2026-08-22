@@ -339,40 +339,9 @@ async def aria_direct(
             if not dl.update():
                 break
 
-        console.print(f"[bold yellow]The sub file {filename} has completed[/]")
+        console.print(f"[bold yellow]The file {out}[/]")
 
     return out
-
-
-async def download_subtitle(idx: int, episode: Episode, dir_: Path) -> str:
-
-    if not episode.sub_link:
-        return ""
-
-    filename: str = clean(episode.name)
-    path: Path = dir_ / (str(idx) + " " + filename + ".vtt")
-
-    console.print(f"[cyan]Subtitle {filename}")
-
-    cmd = [
-        "aria2c",
-        "--check-certificate=false",
-        f"--header=Origin:{episode.sub_link_headers['Origin']}",  # ty:ignore[invalid-argument-type]
-        f"--header=Referer:{episode.sub_link_headers['Referer']}",  # ty:ignore[invalid-argument-type]
-        f"--header=User-Agent:Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0",
-        f"-d {dir_}",
-        "-x1",
-        "-s1",
-        "-j8",
-        "-k32M",
-        f"-o {str(idx)} {filename}.vtt",
-        episode.sub_link,
-    ]
-
-    async with global_subtitle_semaphore:
-        await run(cmd)
-
-    return filename
 
 
 async def mux(filename: str, segment: str, temp_: Path, subtitle: str, dir_: Path):
