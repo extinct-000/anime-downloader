@@ -1,3 +1,4 @@
+from select import epoll
 import Scrapers.myanimelive
 import aiohttp
 import sys
@@ -17,7 +18,7 @@ from pathlib import Path
 from urllib.parse import urljoin
 from dataclasses import dataclass
 from m3u8 import M3U8
-from Dataobj import Season, Stream, Server, Episode, CTX
+from Dataobj import Stream, Server, Episode, CTX, Direct, Mux_Info_
 from Scrapers.myanimelive import Scrape as myanime
 
 import aria2p.api
@@ -63,7 +64,7 @@ global_headers = {
 global_video_semaphore: Semaphore = Semaphore(3)
 global_mux_semaphore: Semaphore = Semaphore(4)
 global_validation_semaphore: Semaphore = Semaphore(10)
-global_subtitle_semaphore: Semaphore = Semaphore(10)
+GLOBAL_Direct_: Semaphore = Semaphore(5)
 global_last_phase_validation_semaphore: Semaphore = Semaphore(10)
 global_m3u8__semaphore: Semaphore = Semaphore(5)
 
@@ -293,64 +294,41 @@ async def process_episode(
     return await mux(filename, segment, temp_, subtitle, dir_)
 
 
-async def download_video(idx: int, episode: Episode, dir_: Path) -> str:
+#######################################################################
 
-    filename = clean(episode.name)
-    filename = f"{str(idx)} {filename}"
+# NOTE:
 
-    output = str(dir_ / (f"{filename}.%(ext)s"))
-
-    cmd = [
-        "yt-dlp",
-        episode.video_link,
-        "-o",
-        output,
-        "-N",
-        "4",
-        "--add-header",
-        f"Origin:{episode.video_link_headers['Origin']}",  # ty:ignore[invalid-argument-type]
-        "--add-header",
-        f"Referer:{episode.video_link_headers['Referer']}",  # ty:ignore[invalid-argument-type]
-        "--external-downloader",
-        "aria2c",
-        "--external-downloader-args",
-        "--check-certificate=false "
-        f"--header=Origin:{episode.video_link_headers['Origin']}"  # ty:ignore[invalid-argument-type]
-        f"--header=Referer:{episode.video_link_headers['Referer']}/"  # ty:ignore[invalid-argument-type]
-        f"--header=User-Agent:Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0"
-        "-x1 -s1 -j100 -k32M",
-    ]
-
-    console.print(f"[green]Video {filename}")
-
-    async with global_video_semaphore:
-        await run(cmd)
-
-    return filename
+#######################################################################
 
 
 async def aria_direct(
     episode: Episode, dir_: Path, aria: aria2p.API, client: aria2p.Client
 ) -> str:
 
-    if not episode.sub_link:
+    if isinstance(episode.video, Direct):
+        direct: Direct = episode.video
+        out: str = episode.name + ".direct"
+        pass
+
+    elif isinstance(episode.subtitle, Direct):
+        direct: Direct = episode.subtitle
+        out = episode.name + ".vtt"
+        pass
+
+    else:
         return ""
 
-    filename: str = episode.name
-
-    temp: Path = dir_ / filename
+    temp: Path = dir_ / episode.name
 
     temp.mkdir(exist_ok=True)
 
-    out = filename + ".vtt"
-
-    async with global_subtitle_semaphore:
+    async with GLOBAL_Direct_:
         gid = client.add_uri(
-            [episode.sub_link],
+            [direct.link],
             options={
                 "dir": str(temp),
                 "out": out,
-                "header": episode.sub_link_headers,
+                "header": direct.headers,
             },
         )
         console.print(gid)
@@ -628,7 +606,7 @@ async def to_Episode(
         video_link_headers=[f"{k}:{v}" for k, v in video["headers"].items()],  # ty:ignore[unresolved-attribute]
         video_link_headers_dict=video["headers"],  # ty:ignore[invalid-argument-type]
         sub_link=sub.sub_link,
-        sub_link_headers=[f"Origin:{sub.referrer}", f"Referer:{sub.referrer}/"],
+        sub_headers=[f"Origin:{sub.referrer}", f"Referer:{sub.referrer}/"],
     )
 
     console.print("____________________________________________________--")
@@ -783,7 +761,26 @@ async def aria_stream(
     dir_: Path,
     client: aria2p.Client,
     aria: aria2p.API,
-) -> tuple[str, Path, str]:
+) -> Mux_Info_ | None:
+
+    if not isinstance(episode.video, Stream):
+        return None
+
+    temp: Path = dir_ / episode.name
+    segments_local: list[Path] = []
+
+    streams: list[Stream] = []
+    streams.append(episode.video)
+
+    segments_local.append(temp / "video" + " local.m3u8")
+
+    if isinstance(episode.audio, Stream):
+        streams.append(episode.audio)
+        segments_local.append(temp / "audio" + " local.m3u8")
+
+    for stream in streams:
+        prepare_playlist()
+        pass
 
     response = await fetch_with_no_semaphore(
         url=episode.video_link,
