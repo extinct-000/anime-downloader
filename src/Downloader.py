@@ -1,4 +1,5 @@
-from select import epoll
+from pytest import Dir
+from operator import sub
 import Scrapers.myanimelive
 import aiohttp
 import sys
@@ -18,7 +19,16 @@ from pathlib import Path
 from urllib.parse import urljoin
 from dataclasses import dataclass
 from m3u8 import M3U8
-from Dataobj import Stream, Server, Episode, CTX, Direct, Mux_Info_
+from Dataobj import (
+    Stream,
+    Server,
+    Episode,
+    CTX,
+    Direct,
+    Mux_Info_,
+    PreparedStream,
+    Season,
+)
 from Scrapers.myanimelive import Scrape as myanime
 
 import aria2p.api
@@ -271,10 +281,10 @@ async def process_episode(
     aria: aria2p.API,
 ):
 
-    if not episode.video_link:
-        return None
+    if episode.video is None:
+        return
 
-    if episode.direct:
+    if isinstance(episode.video, Direct):
         return await aria_direct(episode=episode, dir_=dir_, aria=aria, client=client)
 
     video_task = asyncio.create_task(
@@ -284,14 +294,14 @@ async def process_episode(
     )
     subtitle_task = asyncio.create_task(
         aria_direct(episode=episode, dir_=dir_, aria=aria, client=client)
-        # download_subtitle(idx=idx, episode=episode, dir_=dir_)
     )
 
-    video_result_tuple, subtitle = await asyncio.gather(video_task, subtitle_task)
+    video, subtitle = await asyncio.gather(video_task, subtitle_task)
 
-    filename, temp_, segment = video_result_tuple
+    if subtitle:
+        video.subtitle = subtitle  # ty: ignore[invalid-assignment]
 
-    return await mux(filename, segment, temp_, subtitle, dir_)
+    return await mux(video)  # ty: ignore[invalid-argument-type]
 
 
 #######################################################################
@@ -303,20 +313,18 @@ async def process_episode(
 
 async def aria_direct(
     episode: Episode, dir_: Path, aria: aria2p.API, client: aria2p.Client
-) -> str:
+) -> Path | None:
 
     if isinstance(episode.video, Direct):
         direct: Direct = episode.video
         out: str = episode.name + ".direct"
-        pass
 
     elif isinstance(episode.subtitle, Direct):
         direct: Direct = episode.subtitle
         out = episode.name + ".vtt"
-        pass
 
     else:
-        return ""
+        return None
 
     temp: Path = dir_ / episode.name
 
@@ -626,7 +634,7 @@ async def pipeline2(
 
     dir_ = dir_ / (clean(name))
 
-    dir_.mkdir(exist_ok=True)
+    dir_.mkdir(parents=True, exist_ok=True)
 
     tasks = []
 
@@ -686,13 +694,17 @@ async def main():
     name = "Aliens Among Immortals"
     session: ClientSession = ClientSession()
 
-    episodes, _ = await myanime(name=name, session=session)
+    episodes, _ = await myanime(
+        name=name,
+        session=session,
+        dir_=Path("/home/extinct/Videos/Anime/" + name),
+    )
 
     await pipeline2(
         episodes=episodes,
         name=name,
         session=session,
-        dir_=Path("C:/Users/coolk/Videos/Anime/"),
+        dir_=Path("/home/extinct/Videos/Anime/"),
     )
 
     await session.close()
