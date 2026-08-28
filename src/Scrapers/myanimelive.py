@@ -1,3 +1,4 @@
+from pathlib import Path
 from datetime import datetime, UTC
 from rich.console import Console
 
@@ -5,7 +6,7 @@ from aiohttp import ClientSession
 from asyncio import Semaphore
 from yt_dlp.networking.impersonate import ImpersonateTarget
 
-from Dataobj import Season, Server, Episode
+from Dataobj import Season, Server, Episode, Stream
 from typing import Any, Coroutine
 from bs4.element import AttributeValueList
 from bs4 import BeautifulSoup, Tag, ResultSet
@@ -16,7 +17,7 @@ import yt_dlp
 console: Console = Console()
 
 global_first_phase: Semaphore = Semaphore(4)
-global_ytdlp: Semaphore = Semaphore(4)
+global_ytdlp: Semaphore = Semaphore(3)
 
 
 #######################################################################
@@ -244,7 +245,7 @@ async def fetch_(session: ClientSession, url: str):
 
 
 #######################################################################
-async def Scrape(name: str, session: ClientSession):
+async def Scrape(name: str, session: ClientSession, dir_: Path):
     response = await fetch_data(
         session=session,
         url="https://myanime.live/?infinity=scrolling",
@@ -253,6 +254,7 @@ async def Scrape(name: str, session: ClientSession):
     )
 
     list_ = json_to_list(response, name)
+    console.print(list_)
 
     episode_server: list[Server] = list()
     for uri in list_:
@@ -367,7 +369,9 @@ async def main():
 
     name: str = "Aliens Among Immortals"
 
-    result, _ = await Scrape(name=name, session=session)
+    result, _ = await Scrape(
+        name=name, session=session, dir_=Path("/home/extinct/Videos/Anime/" + name)
+    )
     console.print(result)
 
     await session.close()
