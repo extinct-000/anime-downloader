@@ -274,28 +274,60 @@ async def Scrape(name: str, session: ClientSession, dir_: Path):
 
     episodes: list[Episode] = []
 
+    impersonate = ImpersonateTarget(
+        client="chrome",
+        version="146",
+        os="macos",
+        os_version="26",
+    )
     with yt_dlp.YoutubeDL(
         {
             "quiet": True,
-            "impersonate": ImpersonateTarget.from_str("chrome-146"),
+            "impersonate": impersonate,
         }
     ) as ydl:
         for idx, value in enumerate(result):
-            if value[0]:
-                info = ydl.extract_info(value[0], download=False)
-                best = get_best_format(info["formats"])
-                episodes.append(
-                    Episode(
-                        name=f"{length - idx} " + value[1],
-                        video_link=best["url"],  # ty: ignore[unknown-argument]
-                        video_link_headers_dict=best["http_headers"],  # ty: ignore[unknown-argument]
-                        video_link_headers=[
-                            f"{k}:{v}" for k, v in best["http_headers"].items()
-                        ],  # ty: ignore[unknown-argument]
-                        sub_link="",
-                        sub_headers=[],
-                    )  # ty: ignore[missing-argument]
-                )
+            async with global_ytdlp:
+                if value[0]:
+                    try:
+                        episode_name: str = clean(f"{length - idx} " + value[1])
+                        if Path(dir_ / (episode_name + ".mkv")).exists():
+                            continue
+
+                        info = ydl.extract_info(value[0], download=False)
+                        best = get_best_format(info["formats"])
+
+                        audio: Stream | None = None
+                        audio_format = get_best_audio(info["formats"]) or None
+
+                        if audio_format:
+                            audio = Stream(
+                                link=audio_format["url"],
+                                headers=[
+                                    f"{k}:{v}"
+                                    for k, v in audio_format["http_headers"].items()
+                                ],
+                                headers_dict=audio_format["http_headers"],
+                            )
+
+                        episodes.append(
+                            Episode(
+                                name=episode_name,
+                                video=Stream(
+                                    link=best["url"],
+                                    headers=[
+                                        f"{k}:{v}"
+                                        for k, v in best["http_headers"].items()
+                                    ],
+                                    headers_dict=best["http_headers"],
+                                ),
+                                audio=audio,
+                                subtitle=None,
+                            )
+                        )
+                    except Exception:
+                        console.print("Error")
+
     return episodes, name
 
 
@@ -314,6 +346,13 @@ def get_best_format(formats):
             f.get("fps") or 0,
             f.get("tbr") or 0,
         ),
+    )
+
+
+def get_best_audio(formats):
+    return max(
+        formats,
+        key=lambda f: (f.get("source_preference") or 0,),
     )
 
 
