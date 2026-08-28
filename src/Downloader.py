@@ -349,10 +349,57 @@ async def aria_direct(
 
         console.print(f"[bold yellow]The file {out}[/]")
 
-    return out
+    return Path(temp / out)
 
 
-async def mux(filename: str, segment: str, temp_: Path, subtitle: str, dir_: Path):
+async def mux(mux: Mux_Info_):
+    inputs = []
+    maps = []
+
+    inputs.extend(["-i", str(mux.video)])
+    maps.extend(["-map", "0:v:0"])
+
+    input_index = 1
+
+    if mux.audio:
+        inputs.extend(["-i", str(mux.audio)])
+        maps.extend(["-map", f"{input_index}:a:0"])
+        input_index += 1
+
+    if mux.subtitle:
+        inputs.extend(["-i", str(mux.subtitle)])
+        maps.extend(["-map", f"{input_index}:s:0"])
+        input_index += 1
+
+    cmd = [
+        "ffmpeg",
+        "-y",
+        *inputs,
+        *maps,
+        "-c",
+        "copy",
+    ]
+
+    if mux.subtitle:
+        cmd.extend(
+            [
+                "-c:s",
+                "webvtt",
+                "-disposition:s:0",
+                "default",
+            ]
+        )
+
+    cmd.append(str(mux.out))
+
+    async with global_mux_semaphore:
+        await run(cmd)
+
+    if mux.out.exists():
+        shutil.rmtree(mux.temp, ignore_errors=True)
+
+
+async def mux__(filename: str, segment: str, temp_: Path, subtitle: str, dir_: Path):
 
     temp = dir_ / temp_
 
@@ -595,37 +642,37 @@ async def to_Episode(
     )
 
 
-async def startup(session: ClientSession, season: Season):
-
-    links = []
-    for stream in season.episode[0]:
-        headers = {
-            "Origin": stream.referrer,  # ty:ignore[unresolved-attribute]
-            "Referer": f"{stream.referrer}/",  # ty:ignore[unresolved-attribute]
-        }
-        headers.update(global_headers)
-        links.append(
-            await m3u8_validate_(url=stream.link, session=session, headers=headers)
-        )
-
-    for valid in links:
-        if valid:
-            video = valid
-            break
-    if video:
-        response = await fetch_with_no_semaphore(
-            url=video["uri"],  # ty:ignore[invalid-argument-type]
-            session=session,
-            headers=video["headers"],  # ty:ignore[invalid-argument-type]
-        )
-
-    try:
-        playlist: M3U8 = m3u8.loads(response)
-    except:
-        console.print("startup failed......")
-        sys.exit(1)
-
-    return min(len(playlist.segments), 128)
+# async def startup(session: ClientSession, season: Season):
+#
+#     links = []
+#     for stream in season.episode[0]:
+#         headers = {
+#             "Origin": stream.referrer,  # ty:ignore[unresolved-attribute]
+#             "Referer": f"{stream.referrer}/",  # ty:ignore[unresolved-attribute]
+#         }
+#         headers.update(global_headers)
+#         links.append(
+#             await m3u8_validate_(url=stream.link, session=session, headers=headers)
+#         )
+#
+#     for valid in links:
+#         if valid:
+#             video = valid
+#             break
+#     if video:
+#         response = await fetch_with_no_semaphore(
+#             url=video["uri"],  # ty:ignore[invalid-argument-type]
+#             session=session,
+#             headers=video["headers"],  # ty:ignore[invalid-argument-type]
+#         )
+#
+#     try:
+#         playlist: M3U8 = m3u8.loads(response)
+#     except:
+#         console.print("startup failed......")
+#         sys.exit(1)
+#
+#     return min(len(playlist.segments), 128)
 
 
 async def pipeline2(
@@ -732,8 +779,93 @@ async def fetch_with_no_semaphore(
     return response.status
 
 
-def prepare_playlist():
-    pass
+def prepare_playlist(
+    response,
+    stream: Stream,
+    filename: str,
+    stream_type: str,
+    temp: Path,
+) -> PreparedStream:
+
+    if not response.startswith("#EXTM3U"):
+        response = base64.b64decode(response, validate=True)
+
+    try:
+        playlist: M3U8 = m3u8.loads(response)
+    except:
+        console.print(stream)
+
+    multicall: list = []
+
+    segments_path: list[Path] = []
+
+    segment_local: Path = temp / f" {stream_type} local.m3u8"
+
+    for i, seg in enumerate(playlist.segments):
+        out = f"{filename} {stream_type} {i:05}.ts"
+        # out = clean(out)
+        # FIXME : Update this to accept a callable function for decryption, if any
+        resolved_url = resolve_segment_url(seg.uri)
+
+        multicall.append(
+            {
+                "methodName": "aria2.addUri",
+                "params": [
+                    [urljoin(stream.link, resolved_url)],
+                    {
+                        "dir": str(temp),
+                        "out": out,
+                        "header": stream.headers,
+                    },
+                ],
+            }
+        )
+
+        seg.uri = out
+        segments_path.append(temp / out)
+
+    text = playlist.dumps()
+
+    for i, map in enumerate(playlist.segment_map):
+        out = f"{filename} {stream_type} {i:05}.mp4"
+        # out = clean(out)
+
+        text = text.replace(f'#EXT-X-MAP:URI="{map.uri}"', f'#EXT-X-MAP:URI="{out}"')  # ty:ignore[unresolved-attribute]
+
+        multicall.append(
+            {
+                "methodName": "aria2.addUri",
+                "params": [
+                    [urljoin(stream.link, map.uri)],  # ty:ignore[unresolved-attribute]
+                    {
+                        "dir": str(temp),
+                        "out": out,
+                        "header": stream.headers,
+                    },
+                ],
+            }
+        )
+        map.uri = out  # ty:ignore[invalid-assignment]
+        segments_path.append(temp / out)
+
+    with open(segment_local, "w") as file:
+        file.write(text)
+
+    return PreparedStream(
+        stream_type=stream_type,
+        segments_path=segments_path,
+        playlist_path=segment_local,
+        multicall=multicall,
+        segment_count=len(playlist.segments.uri),
+    )
+
+
+#######################################################################
+
+# NOTE:
+
+
+#######################################################################
 
 
 async def aria_stream(
@@ -748,107 +880,135 @@ async def aria_stream(
         return None
 
     temp: Path = dir_ / episode.name
-    segments_local: list[Path] = []
-
-    streams: list[Stream] = []
-    streams.append(episode.video)
-
-    segments_local.append(temp / "video" + " local.m3u8")
-
-    if isinstance(episode.audio, Stream):
-        streams.append(episode.audio)
-        segments_local.append(temp / "audio" + " local.m3u8")
-
-    for stream in streams:
-        prepare_playlist()
-        pass
-
-    response = await fetch_with_no_semaphore(
-        url=episode.video_link,
-        session=session,
-        headers=episode.video_link_headers_dict,
-    )
-
-    console.print(response)
-
-    dir_.mkdir(exist_ok=True)
-
-    filename: str = clean(episode.name)
-
-    temp: Path = dir_ / filename
-
-    segment_txt: Path = temp / "local.m3u8"
-
     temp.mkdir(exist_ok=True)
 
-    if not response.startswith("#EXTM3U"):
-        response = base64.b64decode(response, validate=True)
+    multicall = []
+    total_seg = 0
 
-    try:
-        playlist: M3U8 = m3u8.loads(response)
-    except:
-        console.print(episode)
+    response = await fetch_with_no_semaphore(
+        url=episode.video.link,
+        session=session,
+        headers=episode.video.headers_dict,
+    )
 
+    video_stream: PreparedStream = prepare_playlist(
+        response,
+        episode.video,
+        episode.name,
+        "video",
+        temp,
+    )
+
+    multicall.extend(video_stream.multicall)
+    total_seg += video_stream.segment_count
+
+    audio_stream: PreparedStream | None = None
+
+    if isinstance(episode.audio, Stream):
+        response = await fetch_with_no_semaphore(
+            url=episode.audio.link,
+            session=session,
+            headers=episode.audio.headers_dict,
+        )
+
+        audio_stream: PreparedStream = prepare_playlist(
+            response,
+            episode.audio,
+            episode.name,
+            "audio",
+            temp,
+        )
+
+    if audio_stream:
+        multicall.extend(audio_stream.multicall)
+        total_seg += audio_stream.segment_count
+
+    # response = await fetch_with_no_semaphore(
+    #     url=episode.video_link,
+    #     session=session,
+    #     headers=episode.video_link_headers_dict,
+    # )
+
+    # console.print(response)
+
+    # dir_.mkdir(exist_ok=True)
+
+    # filename: str = clean(episode.name)
+
+    # temp: Path = dir_ / filename
+
+    # segment_txt: Path = temp / "local.m3u8"
+
+    # temp.mkdir(exist_ok=True)
+
+    # if not response.startswith("#EXTM3U"):
+    #     response = base64.b64decode(response, validate=True)
+    #
+    # try:
+    #     playlist: M3U8 = m3u8.loads(response)
+    # except:
+    #     console.print(episode)
+    #
     # console.print(response)
     # console.print(playlist.segments.uri)
 
-    total_seg = len(playlist.segments.uri)
+    # total_seg = len(playlist.segments.uri)
 
     # console.print(total_seg)
 
-    multicall: list = []
+    # multicall: list = []
 
     # episode_headers = [f"{k}:{v}" for k, v in episode.episode_link_headers.items()]
     # console.print(episode_headers)
 
-    for i, seg in enumerate(playlist.segments):
-        out = f"{filename} {i:05}.ts"
-        out = clean(out)
-        resolved_url = resolve_segment_url(seg.uri)
-
-        multicall.append(
-            {
-                "methodName": "aria2.addUri",
-                "params": [
-                    [urljoin(episode.video_link, resolved_url)],
-                    {
-                        "dir": str(temp),
-                        "out": out,
-                        "header": episode.video_link_headers,
-                    },
-                ],
-            }
-        )
-        seg.uri = out
-
-    text = playlist.dumps()
-
-    for i, map in enumerate(playlist.segment_map):
-        out = f"{filename} {i:05}.mp4"
-        out = clean(out)
-
-        text = text.replace(f'#EXT-X-MAP:URI="{map.uri}"', f'#EXT-X-MAP:URI="{out}"')  # ty:ignore[unresolved-attribute]
-
-        multicall.append(
-            {
-                "methodName": "aria2.addUri",
-                "params": [
-                    [urljoin(episode.video_link, map.uri)],  # ty:ignore[unresolved-attribute]
-                    {
-                        "dir": str(temp),
-                        "out": out,
-                        "header": episode.video_link_headers,
-                    },
-                ],
-            }
-        )
-        map.uri = out  # ty:ignore[invalid-assignment]
-
-    # playlist.dumps()
-    console.print(playlist.dumps())
-
-    with open(segment_txt, "w") as file:
-        file.write(text)
+    # for i, seg in enumerate(playlist.segments):
+    #     out = f"{filename} {i:05}.ts"
+    #     out = clean(out)
+    #     resolved_url = resolve_segment_url(seg.uri)
+    #
+    #     multicall.append(
+    #         {
+    #             "methodName": "aria2.addUri",
+    #             "params": [
+    #                 [urljoin(episode.video_link, resolved_url)],
+    #                 {
+    #                     "dir": str(temp),
+    #                     "out": out,
+    #                     "header": episode.video_link_headers,
+    #                 },
+    #             ],
+    #         }
+    #     )
+    #     seg.uri = out
+    #
+    # text = playlist.dumps()
+    #
+    # for i, map in enumerate(playlist.segment_map):
+    #     out = f"{filename} {i:05}.mp4"
+    #     out = clean(out)
+    #
+    #     text = text.replace(f'#EXT-X-MAP:URI="{map.uri}"', f'#EXT-X-MAP:URI="{out}"')  # ty:ignore[unresolved-attribute]
+    #
+    #     multicall.append(
+    #         {
+    #             "methodName": "aria2.addUri",
+    #             "params": [
+    #                 [urljoin(episode.video_link, map.uri)],  # ty:ignore[unresolved-attribute]
+    #                 {
+    #                     "dir": str(temp),
+    #                     "out": out,
+    #                     "header": episode.video_link_headers,
+    #                 },
+    #             ],
+    #         }
+    #     )
+    #     map.uri = out  # ty:ignore[invalid-assignment]
+    #
+    # # playlist.dumps()
+    # console.print(playlist.dumps())
+    #
+    # with open(segment_txt, "w") as file:
+    #     file.write(text)
 
     result = client.multicall(multicall)
     gids = [gid[0] for gid in result]  # ty:ignore[not-subscriptable]
@@ -897,23 +1057,23 @@ async def aria_stream(
 
         await asyncio.sleep(1)
 
-    console.print(f"[green bold]Completed {filename}[/]")
+    console.print(f"[green bold]Completed {episode.name}[/]")
 
     async with global_video_semaphore:
         await asyncio.gather(
             *(
-                asyncio.to_thread(strip_png_wrapper, Path(temp / map.uri))  # ty:ignore[unresolved-attribute]
-                for map in playlist.segment_map
-            )
-        )
-        await asyncio.gather(
-            *(
-                asyncio.to_thread(strip_png_wrapper, Path(temp / seg))
-                for seg in playlist.segments.uri
+                asyncio.to_thread(strip_png_wrapper, path)  # ty:ignore[unresolved-attribute]
+                for path in video_stream.segments_path
             )
         )
 
-    return filename, temp, str(segment_txt)
+    return Mux_Info_(
+        out=dir_ / (episode.name + ".mkv"),
+        temp=temp,
+        video=video_stream.playlist_path,
+        audio=audio_stream.playlist_path if audio_stream else None,
+        subtitle=None,
+    )
 
 
 def strip_png_wrapper(path: Path):
