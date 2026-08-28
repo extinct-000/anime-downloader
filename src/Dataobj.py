@@ -14,6 +14,15 @@ class Stream:
 
 
 @dataclass
+class PreparedStream:
+    stream_type: str
+    playlist_path: Path
+    segments_path: list[Path]
+    multicall: list[dict]
+    segment_count: int
+
+
+@dataclass
 class Direct:
     link: str
     headers: list[str]
@@ -21,9 +30,11 @@ class Direct:
 
 @dataclass
 class Mux_Info_:
-    filename: str
+    out: Path
     temp: Path
-    m3u8_segments_local: str
+    video: Path
+    audio: Path | None
+    subtitle: Path | None
 
 
 @dataclass
