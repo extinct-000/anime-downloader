@@ -7,7 +7,7 @@ from asyncio import Semaphore
 from yt_dlp.networking.impersonate import ImpersonateTarget
 
 from Dataobj import Season, Server, Episode, Stream
-from typing import Any, Coroutine
+from typing import Any, Coroutine, Callable, Awaitable
 from bs4.element import AttributeValueList
 from bs4 import BeautifulSoup, Tag, ResultSet
 
@@ -16,8 +16,26 @@ import yt_dlp
 
 console: Console = Console()
 
-global_first_phase: Semaphore = Semaphore(4)
-global_ytdlp: Semaphore = Semaphore(3)
+MY_ANIMELIVE: Semaphore = Semaphore(4)
+GLOBAL_YTDLP: Semaphore = Semaphore(3)
+
+IMPERSONATE_CHROME = ImpersonateTarget(
+    client="chrome",
+    version="146",
+    os="macos",
+    os_version="26",
+)
+
+
+@dataclass
+class Episode_CTX:
+    name: str
+    links: dict[str, str]
+
+
+ServerExtractor = Callable[
+    [str, ClientSession, Episode_CTX, Path], Awaitable[Episode | None]
+]
 
 
 #######################################################################
@@ -225,7 +243,7 @@ async def fetch_(session: ClientSession, url: str):
 
     for attempt in range(3):
         try:
-            async with global_first_phase:
+            async with MY_ANIMELIVE:
                 async with session.get(url=url) as response:
                     if response.status == 429:
                         console.print("STATUS : ", response.status)
@@ -246,6 +264,13 @@ async def fetch_(session: ClientSession, url: str):
 
 #######################################################################
 async def Scrape(name: str, session: ClientSession, dir_: Path):
+
+    folder_path: Path = dir_ / (name)
+
+    SERVER_EXTRACTORS: dict[str, ServerExtractor] = {
+        "dailymotion": dailymotion,
+    }
+
     response = await fetch_data(
         session=session,
         url="https://myanime.live/?infinity=scrolling",
@@ -256,77 +281,19 @@ async def Scrape(name: str, session: ClientSession, dir_: Path):
     list_ = json_to_list(response, name)
     console.print(list_)
 
-    episode_server: list[Server] = list()
-    for uri in list_:
-        episode_server.append(Server(name="dailymotion", link=uri))
-
     tasks = []
-    for uri in list_:
+    length = len(list_)
+    for idx, uri in enumerate(list_):
         tasks.append(
-            asyncio.create_task(extract_dailymotion_link(url=uri, session=session))
+            asyncio.create_task(
+                extract_link(
+                    SERVER_EXTRACTORS, url=uri, session=session, idx=length - idx
+                )
+            )
         )
-
-    result = await asyncio.gather(*tasks)  # ty:ignore[invalid-assignment]
-
-    # console.print(result)
-
-    length = len(result)
-
     episodes: list[Episode] = []
 
-    impersonate = ImpersonateTarget(
-        client="chrome",
-        version="146",
-        os="macos",
-        os_version="26",
-    )
-    with yt_dlp.YoutubeDL(
-        {
-            "quiet": True,
-            "impersonate": impersonate,
-        }
-    ) as ydl:
-        for idx, value in enumerate(result):
-            async with global_ytdlp:
-                if value[0]:
-                    try:
-                        episode_name: str = clean(f"{length - idx} " + value[1])
-                        if Path(dir_ / (episode_name + ".mkv")).exists():
-                            continue
-
-                        info = ydl.extract_info(value[0], download=False)
-                        best = get_best_format(info["formats"])
-
-                        audio: Stream | None = None
-                        audio_format = get_best_audio(info["formats"]) or None
-
-                        if audio_format:
-                            audio = Stream(
-                                link=audio_format["url"],
-                                headers=[
-                                    f"{k}:{v}"
-                                    for k, v in audio_format["http_headers"].items()
-                                ],
-                                headers_dict=audio_format["http_headers"],
-                            )
-
-                        episodes.append(
-                            Episode(
-                                name=episode_name,
-                                video=Stream(
-                                    link=best["url"],
-                                    headers=[
-                                        f"{k}:{v}"
-                                        for k, v in best["http_headers"].items()
-                                    ],
-                                    headers_dict=best["http_headers"],
-                                ),
-                                audio=audio,
-                                subtitle=None,
-                            )
-                        )
-                    except Exception:
-                        console.print("Error")
+    # console.print(result)
 
     return episodes, name
 
@@ -372,7 +339,102 @@ def clean(name: str) -> str:
 #######################################################################
 
 
-async def extract_dailymotion_link(url: str, session: ClientSession):
+async def dailymotion(
+    url: str, session: ClientSession, name: str, file: Path
+) -> Episode | None:
+
+    def get_best_format(formats):
+        return max(
+            formats,
+            key=lambda f: (
+                f.get("height") or 0,
+                f.get("fps") or 0,
+                f.get("tbr") or 0,
+            ),
+        )
+
+    def get_best_audio(formats):
+        return max(
+            formats,
+            key=lambda f: (f.get("source_preference") or 0,),
+        )
+
+    with yt_dlp.YoutubeDL(
+        {
+            "quiet": True,
+            "impersonate": IMPERSONATE_CHROME,
+        }
+    ) as yt:
+        async with GLOBAL_YTDLP:
+            if url:
+                try:
+                    if Path(file / (name + ".mkv")).exists():
+                        return None
+
+                    info = yt.extract_info(url, download=False)
+                    video_format = get_best_format(info["formats"])
+                    audio_format = get_best_audio(info["formats"]) or None
+
+                    audio: Stream | None = None
+
+                    if audio_format:
+                        audio = Stream(
+                            link=audio_format["url"],
+                            headers=[
+                                f"{k}:{v}"
+                                for k, v in audio_format["http_headers"].items()
+                            ],
+                            headers_dict=audio_format["http_headers"],
+                        )
+
+                    return Episode(
+                        name=name,
+                        video=Stream(
+                            link=video_format["url"],
+                            headers=[
+                                f"{k}:{v}"
+                                for k, v in video_format["http_headers"].items()
+                            ],
+                            headers_dict=video_format["http_headers"],
+                        ),
+                        audio=audio,
+                        subtitle=None,
+                    )
+
+                except Exception:
+                    console.print()
+
+    return None
+
+
+async def extract_(
+    url: str, SERVER_EXTRACTORS, session: ClientSession, ctx: Episode_CTX, file: Path
+) -> Episode | None:
+
+    for server, extractor in SERVER_EXTRACTORS:
+        link = ctx.links.get(server)
+
+        if not link:
+            continue
+        result = await extractor(
+            url=link,
+            session=session,
+            name=ctx.name,
+            file=file,
+        )
+
+        if result is not None:
+            return result
+
+    return None
+
+
+async def extract_link(
+    SERVER_EXTRACTORS: dict[str, ServerExtractor],
+    url: str,
+    session: ClientSession,
+    idx: int,
+) -> Episode_CTX:
 
     # await asyncio.sleep(1)
     response = await fetch_(session=session, url=url)
@@ -380,19 +442,22 @@ async def extract_dailymotion_link(url: str, session: ClientSession):
     soup: BeautifulSoup = BeautifulSoup(response, "lxml")
 
     name = clean(soup.find("h1").text)  # ty:ignore[unresolved-attribute]
+    name = clean(f"{idx} " + name)
 
-    if n := soup.find_all("iframe"):
-        for tag in n:
-            uri = tag.get("src")
-            if "dailymotion" in uri:  # ty: ignore[unsupported-operator]
-                return uri, name
+    links: dict[str, str] = {}
 
-    if n := soup.find_all("video"):
-        for tag in n:
-            uri = tag.get("src")
-            if "dailymotion" in uri:  # ty: ignore[unsupported-operator]
-                return uri, name
-    return "", name
+    for tag in soup.find_all(["iframe", "video"]):
+        uri = tag.get("src")
+
+        if not uri:
+            continue
+
+        for server in SERVER_EXTRACTORS:
+            if server in uri:
+                links[server] = uri  # ty: ignore[invalid-assignment]
+                break
+
+    return Episode_CTX(name=name, links=links)
 
 
 #######################################################################
