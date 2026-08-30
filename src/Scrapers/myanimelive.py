@@ -1,3 +1,5 @@
+from types import CoroutineType
+from dataclasses import dataclass
 from pathlib import Path
 from datetime import datetime, UTC
 from rich.console import Console
@@ -33,9 +35,7 @@ class Episode_CTX:
     links: dict[str, str]
 
 
-ServerExtractor = Callable[
-    [str, ClientSession, Episode_CTX, Path], Awaitable[Episode | None]
-]
+ServerExtractor = Callable[[str, ClientSession, str, Path], Awaitable[Episode | None]]
 
 
 #######################################################################
