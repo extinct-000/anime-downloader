@@ -291,7 +291,25 @@ async def Scrape(name: str, session: ClientSession, dir_: Path):
                 )
             )
         )
-    episodes: list[Episode] = []
+
+    episodes_ctx = await asyncio.gather(*tasks)
+
+    console.print(episodes_ctx)
+
+    extraction_task = []
+    for ep_ctx in episodes_ctx:
+        extraction_task.append(
+            asyncio.create_task(
+                extract(
+                    SERVER_EXTRACTORS,
+                    session=session,
+                    ctx=ep_ctx,
+                    folder_path=folder_path,
+                )
+            )
+        )
+
+    episodes: list[Episode | None] = await asyncio.gather(*extraction_task)
 
     # console.print(result)
 
@@ -340,7 +358,7 @@ def clean(name: str) -> str:
 
 
 async def dailymotion(
-    url: str, session: ClientSession, name: str, file: Path
+    url: str, session: ClientSession, name: str, folder_path: Path
 ) -> Episode | None:
 
     def get_best_format(formats):
@@ -368,7 +386,7 @@ async def dailymotion(
         async with GLOBAL_YTDLP:
             if url:
                 try:
-                    if Path(file / (name + ".mkv")).exists():
+                    if Path(folder_path / (name + ".mkv")).exists():
                         return None
 
                     info = yt.extract_info(url, download=False)
@@ -407,11 +425,11 @@ async def dailymotion(
     return None
 
 
-async def extract_(
-    url: str, SERVER_EXTRACTORS, session: ClientSession, ctx: Episode_CTX, file: Path
+async def extract(
+    SERVER_EXTRACTORS, session: ClientSession, ctx: Episode_CTX, folder_path: Path
 ) -> Episode | None:
 
-    for server, extractor in SERVER_EXTRACTORS:
+    for server, extractor in SERVER_EXTRACTORS.items():
         link = ctx.links.get(server)
 
         if not link:
@@ -420,7 +438,7 @@ async def extract_(
             url=link,
             session=session,
             name=ctx.name,
-            file=file,
+            folder_path=folder_path,
         )
 
         if result is not None:
@@ -474,7 +492,7 @@ async def main():
     name: str = "Aliens Among Immortals"
 
     result, _ = await Scrape(
-        name=name, session=session, dir_=Path("/home/extinct/Videos/Anime/" + name)
+        name=name, session=session, dir_=Path("/home/extinct/Videos/Anime/")
     )
     console.print(result)
 
