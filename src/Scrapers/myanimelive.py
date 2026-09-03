@@ -1,12 +1,13 @@
-from types import CoroutineType
 from dataclasses import dataclass
 from pathlib import Path
 from datetime import datetime, UTC
 from rich.console import Console
+from m3u8 import M3U8
 
 from aiohttp import ClientSession
 from asyncio import Semaphore
 from yt_dlp.networking.impersonate import ImpersonateTarget
+from Utils.requests import fetch
 
 from Dataobj import Season, Server, Episode, Stream
 from typing import Any, Coroutine, Callable, Awaitable
@@ -15,11 +16,17 @@ from bs4 import BeautifulSoup, Tag, ResultSet
 
 import asyncio
 import yt_dlp
+import base64
+import m3u8
+
 
 console: Console = Console()
 
 MY_ANIMELIVE: Semaphore = Semaphore(4)
-GLOBAL_YTDLP: Semaphore = Semaphore(3)
+DAILYMOTION: Semaphore = Semaphore(3)
+OKRU: Semaphore = Semaphore(4)
+
+OKRU_CDN: Semaphore = Semaphore(4)
 
 IMPERSONATE_CHROME = ImpersonateTarget(
     client="chrome",
@@ -238,25 +245,6 @@ async def fetch_data(session: ClientSession, url: str, data, headers: dict[str, 
             await asyncio.sleep(delay)
 
 
-async def fetch_(session: ClientSession, url: str):
-    delay = 1
-
-    for attempt in range(3):
-        try:
-            async with MY_ANIMELIVE:
-                async with session.get(url=url) as response:
-                    if response.status == 429:
-                        console.print("STATUS : ", response.status)
-                        console.print("URL : ", url)
-                        await asyncio.sleep(delay)
-                    return await response.text()
-        except:
-            if attempt == 3:
-                raise
-            delay *= 2
-            await asyncio.sleep(delay)
-
-
 #######################################################################
 
 # NOTE: QUERY_ARGs
@@ -269,6 +257,7 @@ async def Scrape(name: str, session: ClientSession, dir_: Path):
 
     SERVER_EXTRACTORS: dict[str, ServerExtractor] = {
         "dailymotion": dailymotion,
+        "ok.ru": okru,
     }
 
     response = await fetch_data(
@@ -350,6 +339,95 @@ def clean(name: str) -> str:
     return name
 
 
+async def okru(
+    url: str, session: ClientSession, name: str, folder_path: Path
+) -> Episode | None:
+
+    def get_best_format(formats):
+        return max(
+            formats,
+            key=lambda f: (
+                f.get("height") or 0,
+                f.get("fps") or 0,
+                f.get("tbr") or 0,
+            ),
+        )
+
+    def get_best_audio(formats):
+        return max(
+            formats,
+            key=lambda f: (f.get("source_preference") or 0,),
+        )
+
+    if "https:" not in url:
+        url = "https:" + url
+
+    headers = {
+        "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+        "accept-encoding": "gzip, deflate, br, zstd",
+        "accept-language": "en-US,en;q=0.6",
+        # "cache-control":"max-age=0",
+        # "cookie":"ss_wb=5oJAcu8XETwlM-3LAFiyH7rIIfiabDjuYEhnZkDGg-SxMhAwqZttGxMevkQn9Xqj4mSYyFldoY5qPI-GlbmsC5nYnR9qN5asPA; bci=-8723284414088792174; _statid=087b11f2-8017-427a-9e82-20363db95f0b; _hd=h; _touch=false; _hover=true; _breakpoint=S; ss_wb=91GrCSO5jxsw4C5Zb-6pKWLi17i_W-Cjwk2gP4G_7nYdhVpX792J9xn5ljhsup05fzF3hYKUyxWic51JUS8YwyaCi-B-YjKmRwE; __last_online=1788351251137",
+        # "priority":"u=0, i",
+        # "sec-ch-ua":""Not=A?Brand";v="99", "Brave";v="151", "Chromium";v="151"",
+        # "sec-ch-ua-mobile":?"1",
+        "sec-ch-ua-platform": "Linux",
+        "sec-fetch-dest": "document",
+        "sec-fetch-mode": "navigate",
+        # "sec-fetch-site":"same-origin",
+        "sec-fetch-user": "?0",
+        # "sec-gpc":"1",
+        # "upgrade-insecure-requests":"1",
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+    }
+    response_html = await fetch(
+        url=url, session=session, SEMAPHORE=OKRU, headers=headers
+    )
+    soup: BeautifulSoup = BeautifulSoup(response_html, "lxml")
+
+    data_option = soup.find(
+        "div",
+        attrs={
+            "class": "vid-card_cnt h-mod",
+            "data-module": "OKVideo",
+        },
+    ).get("data-options")  # ty: ignore[unresolved-attribute]
+
+    if not data_option:
+        return None
+
+    m3u8_manifest: str | None
+
+    for value in reversed(data_option.split(",")):  # ty: ignore[unresolved-attribute]
+        if "hlsManifestUrl" and "video.m3u8" in value:
+            m3u8_manifest = value.split('":"')[1]
+            break
+
+    m3u8_manifest = m3u8_manifest[:-1]
+    m3u8_manifest = m3u8_manifest.replace("\\u0026", "&")
+    m3u8_manifest = m3u8_manifest.replace("%20", "")
+
+    response_m3u8 = await fetch(
+        url=m3u8_manifest, session=session, SEMAPHORE=OKRU_CDN, headers=headers
+    )
+
+    console.print(response_m3u8)
+    breakpoint()
+
+    if not response_m3u8.startswith("#EXTM3U"):
+        response_m3u8 = base64.b64decode(response_m3u8, validate=True)
+
+    try:
+        playlist: M3U8 = m3u8.loads(response_m3u8)
+        console.print(playlist.playlists[0])
+    except:
+        console.print("error")
+
+    exit
+
+    return None
+
+
 #######################################################################
 
 # NOTE: QUERY_ARGS
@@ -383,7 +461,7 @@ async def dailymotion(
             "impersonate": IMPERSONATE_CHROME,
         }
     ) as yt:
-        async with GLOBAL_YTDLP:
+        async with DAILYMOTION:
             if url:
                 try:
                     if Path(folder_path / (name + ".mkv")).exists():
@@ -455,7 +533,7 @@ async def extract_link(
 ) -> Episode_CTX:
 
     # await asyncio.sleep(1)
-    response = await fetch_(session=session, url=url)
+    response = await fetch(session=session, url=url, SEMAPHORE=MY_ANIMELIVE)
 
     soup: BeautifulSoup = BeautifulSoup(response, "lxml")
 
@@ -490,6 +568,7 @@ async def main():
     session: ClientSession = ClientSession()
 
     name: str = "Aliens Among Immortals"
+    console.print(name)
 
     result, _ = await Scrape(
         name=name, session=session, dir_=Path("/home/extinct/Videos/Anime/")
