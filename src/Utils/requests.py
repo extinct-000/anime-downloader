@@ -9,22 +9,24 @@ console: Console = Console()
 async def fetch(session: ClientSession, url: str, SEMAPHORE: Semaphore, headers=None):
     delay = 1
 
-    for attempt in range(4):
+    for attempt in range(3):
         try:
             async with SEMAPHORE:
                 async with session.get(url=url, headers=headers) as response:
                     if response.status == 429:
                         console.print("STATUS : ", response.status)
                         console.print("URL : ", url)
-                        await asyncio.sleep(delay)
+
+                        # NOTE : Leave Release Semaphore
                         continue
 
                     return await response.text()
-        except:
+        except Exception:
             if attempt == 3:
                 raise
-            delay *= 2
+
             await asyncio.sleep(delay)
+            delay *= 2
 
 
 async def main():
