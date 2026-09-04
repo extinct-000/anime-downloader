@@ -161,11 +161,11 @@ settings = {
         ],
         "order": "DESC",
     },
-    "query_before": "2026-06-08 06:51:00",
+    "query_before": "2026-09-04 11:03:21",
     "last_post_date": "false",
     "body_class": "infinite-scroll neverending",
     "loading_text": "Loading new page",
-    "stats": "blog=167246504\u0026host=myanime.live\u0026v=ext\u0026j=1:15.9-a.7\u0026x_pagetype=infinite-jetpack",
+    # "stats": "blog=167246504\u0026host=myanime.live\u0026v=ext\u0026j=1:15.9-a.7\u0026x_pagetype=infinite-jetpack",
 }
 
 headers = {
@@ -181,7 +181,7 @@ headers = {
     "sec-ch-ua-platform": "Linux",
     "Connection": "keep-alive",
     "sec-fetch-dest": "document",
-    "Referer": "https://myanime.live/?s=Renegade+Immortal",
+    # "Referer": "https://myanime.live/?s=Renegade+Immortal",
     "Cookie": "cf_clearance=J4ewRP4rAnG4jdmpYJoBPcUVC1g7gVoB9BbxEzaF3eU-1787140871-1.2.1.1-NIcasJQ_0NDKfeeBg6qbICAmOpn7Fg3NYzIPR8yJAvLWbgXms8fxVDumAGTfd0bdg0l65lWC5LxFawNU3NyQKREDaQIzrRoD8UIVBcFfJUs6OZ1sDvopiBvyvz4P5OJ3szu.5Cs3EEbTmkAf5GUuPnCSpIvhv4bEt7t.vITsthCicV1UBNrjmvCNVfXERQnef4k0EQRku86P7ZWpoHpy6OKmwOdvxxbwQbtAkpNFh2T.2bWmdwRybex2uBLUGZBAPejfDD.5WaHAml9ppVrRileKyqUh9FRYcRJKgb.nigKXDffOcFkH7Thy0VEynAeR5aDJFk1pIoU5RNDnpZDcifr1dhrlJbCXIbQh8fReW8Y",
     "Sec-Fetch-Dest": "empty",
     "Sec-Fetch-Mode": "cors",
@@ -286,9 +286,9 @@ async def Scrape(name: str, session: ClientSession, dir_: Path):
         data=build_query(name),
         headers=headers,
     )
+    # console.print(response)
 
     list_ = json_to_list(response, name)
-    console.print(list_)
 
     tasks = []
     length = len(list_)
@@ -303,7 +303,7 @@ async def Scrape(name: str, session: ClientSession, dir_: Path):
 
     episodes_ctx = await asyncio.gather(*tasks)
 
-    console.print(episodes_ctx)
+    # console.print(episodes_ctx)
 
     extraction_task = []
     for ep_ctx in episodes_ctx:
@@ -526,6 +526,9 @@ async def extract(
     SERVER_EXTRACTORS, session: ClientSession, ctx: Episode_CTX, folder_path: Path
 ) -> Episode | None:
 
+    if Path(folder_path / (ctx.name + ".mkv")).exists():
+        return None
+
     for server, extractor in SERVER_EXTRACTORS.items():
         link = ctx.links.get(server)
 
@@ -594,9 +597,10 @@ async def main():
 
     session: ClientSession = ClientSession()
 
-    name: str = "Aliens Among Immortals"
+    # name: str = "Aliens Among Immortals"
 
-    console.print(name)
+    name: str = "Guangyin Zhi Wai"
+    # console.print(name)
 
     result, _ = await Scrape(
         name=name, session=session, dir_=Path("/home/extinct/Videos/Anime/")
