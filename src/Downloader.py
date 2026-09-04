@@ -281,6 +281,9 @@ async def process_episode(
     aria: aria2p.API,
 ):
 
+    if episode is None:
+        return
+
     if episode.video is None:
         return
 
@@ -365,6 +368,8 @@ async def mux(mux: Mux_Info_):
         inputs.extend(["-i", str(mux.audio)])
         maps.extend(["-map", f"{input_index}:a:0"])
         input_index += 1
+    else:
+        maps.extend(["-map", "0:a?"])
 
     if mux.subtitle:
         inputs.extend(["-i", str(mux.subtitle)])
@@ -744,7 +749,7 @@ async def main():
     episodes, _ = await myanime(
         name=name,
         session=session,
-        dir_=Path("/home/extinct/Videos/Anime/" + name),
+        dir_=Path("/home/extinct/Videos/Anime/"),
     )
 
     await pipeline2(
