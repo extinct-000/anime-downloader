@@ -743,7 +743,8 @@ async def pipeline(season: Season, session: ClientSession, dir_: Path):
 
 async def main():
 
-    name = "Aliens Among Immortals"
+    # name = "Aliens Among Immortals"
+    name: str = "Guangyin Zhi Wai"
     session: ClientSession = ClientSession()
 
     episodes, _ = await myanime(
