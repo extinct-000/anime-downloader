@@ -396,7 +396,7 @@ async def okru(
         "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
     }
     response_html = await fetch(
-        url=url, session=session, SEMAPHORE=OKRU, headers=headers
+        url=url, SESSION=session, semaphore=OKRU, headers=headers
     )
     soup: BeautifulSoup = BeautifulSoup(response_html, "lxml")
 
@@ -423,7 +423,7 @@ async def okru(
     m3u8_manifest = m3u8_manifest.replace("%20", "")
 
     response_m3u8 = await fetch(
-        url=m3u8_manifest, session=session, SEMAPHORE=OKRU_CDN, headers=headers
+        url=m3u8_manifest, SESSION=session, semaphore=OKRU_CDN, headers=headers
     )
 
     if not response_m3u8.startswith("#EXTM3U"):
@@ -556,7 +556,7 @@ async def extract_link(
 
     # await asyncio.sleep(1)
     response = await fetch(
-        session=session, url=url, headers=HEADERS, SEMAPHORE=MY_ANIMELIVE
+        SESSION=session, url=url, headers=HEADERS, semaphore=MY_ANIMELIVE
     )
 
     try:

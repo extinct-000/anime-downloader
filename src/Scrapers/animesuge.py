@@ -1,3 +1,10 @@
+from Scrapers.myanimelive import headers
+from yt_dlp.utils import age_restricted
+from pdb import set_trace
+from rich import inspect
+from dataclasses import dataclass
+from typing import Callable, Awaitable
+from pathlib import Path
 from Crypto.Cipher.AES import new
 from aiohttp.log import client_logger
 import re
@@ -5,7 +12,8 @@ from bs4 import BeautifulSoup, Tag, ResultSet
 from rich.console import Console
 from aiohttp import ClientSession
 from asyncio import Semaphore
-from Dataobj import Server, Season, Stream
+from Dataobj import Server, Season, Stream, Episode
+from Utils.requests import fetch
 
 from urllib.parse import quote, urlparse
 from Crypto.Cipher import ARC4
@@ -16,17 +24,34 @@ import codecs
 import asyncio
 import aiohttp
 
-global_html_parser: str = "lxml"
+# NOTE: -----------------------dev-------------------------------------
+
+import ipdb
+
+# NOTE: -----------------------dev-------------------------------------
+
+PARSER: str = "lxml"
+ANIMESUGE_URL: str
+HEADERS: dict[str, str]
+ANIMESUGE: Semaphore = Semaphore(15)
 global_semaphore: Semaphore = Semaphore(15)
 console: Console = Console()
 
 global_video_semaphore: Semaphore = Semaphore(2)
 global_mux_semaphore: Semaphore = Semaphore(4)
 
+ServerExtractor = Callable[[str, ClientSession, str, Path], Awaitable[Episode | None]]
+
+
+@dataclass
+class Episode_CTX:
+    name: str
+    links: dict[str, str]
+
 
 async def fetch_with_no_semaphore(
     url: str, session: ClientSession, params=None, headers=None, json: bool = False
-) -> str:
+) -> str:  # ty: ignore[invalid-return-type]
     delay = 1
     for attempt in range(4):
         try:
@@ -43,7 +68,7 @@ async def fetch_with_no_semaphore(
 
 async def fetch_with_global_semaphore(
     url: str, session: ClientSession, params=None, headers=None, json: bool = False
-) -> tuple[str, int]:
+):
 
     delay = 1
     for attempt in range(4):
@@ -61,7 +86,81 @@ async def fetch_with_global_semaphore(
             await asyncio.sleep(delay)
 
 
-async def get_episode_servers(url: str, id: int, session: ClientSession) -> Season:
+async def extract_episodes(
+    URL: str,
+    ID: int,
+    SESSION: ClientSession,
+    dir_: Path,
+    SERVER_EXTRACTORS,
+    audio_priority,
+):
+
+    URL_PARSE = urlparse(URL)
+
+    global ANIMESUGE_URL
+    ANIMESUGE_URL = URL.partition(URL_PARSE.path)[0]
+
+    NAME: str = (
+        URL_PARSE.path.rpartition("/")[0]
+        .rpartition("/")[-1:][0]
+        .rpartition("-")[0]
+        .replace("-", " ")
+        .title()
+    )
+    folder_path: Path = Path(dir_ / NAME)
+
+    global HEADERS
+    HEADERS = {
+        "Host": URL_PARSE.hostname if URL_PARSE.hostname else "animesuge.re",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0",
+        "Accept": "application/json, text/javascript, */*; q=0.01",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept-Encoding": "gzip, deflate, br, zstd",
+        "X-Requested-With": "XMLHttpRequest",
+        "Connection": "keep-alive",
+    }
+
+    try:
+        res_episode_json = json.loads(
+            await fetch_with_no_semaphore(
+                url=ANIMESUGE_URL + f"/ajax/episode/list/{ID}",
+                session=SESSION,
+                params={"vrf": generate_vrf(ID)},
+                headers=HEADERS,
+            )
+        )
+        ATAGS: ResultSet[Tag] = BeautifulSoup(
+            res_episode_json["result"], PARSER
+        ).find_all(
+            "a",
+            attrs={
+                "class": True,
+                "data-dub": True,
+                "data-ids": True,
+                "title": True,
+                "data-sub": True,
+                "data-timestamp": True,
+                "data-slug": True,
+                "data-mal": True,
+                "data-num": True,
+            },
+        )
+
+    except Exception:
+        console.print("ERROR")
+
+    return await extract(
+        SERVER_EXTRACTORS=SERVER_EXTRACTORS,
+        SESSION=SESSION,
+        FOLDER_PATH=folder_path,
+        data_id=ATAGS[0].get("data-ids"),  # ty: ignore[invalid-argument-type]
+        name=ATAGS[0].get("title"),  # ty: ignore[invalid-argument-type]
+        audio_priority=audio_priority,
+        HEADER=HEADERS,
+    )
+
+
+async def get_episode_servers(url: str, ID: int, SESSION: ClientSession) -> Season:
 
     url_parse = urlparse(url)
 
@@ -80,9 +179,9 @@ async def get_episode_servers(url: str, id: int, session: ClientSession) -> Seas
     name = name_[last]
 
     name = name.rpartition("-")[0].replace("-", " ").title()
-    season: Season = Season(name=name, crawl_link=[], episode_server=[], episode=[])
+    season: Season = Season(name="hh", crawl_link=[], episode_server=[], episode=[])
 
-    episode_list_request_url_path = f"/ajax/episode/list/{id}"
+    episode_list_request_url_path = f"/ajax/episode/list/{ID}"
 
     new_url = link + episode_list_request_url_path
 
@@ -96,23 +195,38 @@ async def get_episode_servers(url: str, id: int, session: ClientSession) -> Seas
         "Connection": "keep-alive",
     }
 
-    vrf_params = {"vrf": generate_vrf(id)}
+    vrf_params = {"vrf": generate_vrf(ID)}
 
     result = await fetch_with_no_semaphore(
-        new_url, session, params=vrf_params, headers=headers
+        new_url, SESSION, params=vrf_params, headers=headers
     )
 
     # console.print(new_url)
 
     response_json = json.loads(result)
-    soup: BeautifulSoup = BeautifulSoup(response_json["result"], global_html_parser)
+    soup: BeautifulSoup = BeautifulSoup(response_json["result"], PARSER)
 
-    atags = soup.find_all("a")
-    atags = atags[1:]
+    atags = soup.find_all(
+        "a",
+        attrs={
+            "class": True,
+            "data-dub": True,
+            "data-id": True,
+            "title": True,
+            "data-sub": True,
+            "data-timestamp": True,
+            "data-slug": True,
+            "data-mal": True,
+            "data-num": True,
+        },
+    )
 
     episode_server: list = []
 
     new_url = link + "/ajax/server/list"
+
+    console.print(soup)
+    console.print(atags)
 
     async def inner_episode_parser(server: str) -> list[Server]:
 
@@ -122,15 +236,18 @@ async def get_episode_servers(url: str, id: int, session: ClientSession) -> Seas
 
         new_result, _ = await fetch_with_global_semaphore(
             url=new_url,
-            session=session,
+            session=SESSION,
             params={"servers": server},
             headers=headers,
             json=True,
         )
-        soup: BeautifulSoup = BeautifulSoup(new_result["result"], global_html_parser)  # ty:ignore[invalid-argument-type]
+        soup: BeautifulSoup = BeautifulSoup(new_result["result"], PARSER)  # ty:ignore[invalid-argument-type]
         # console.print(soup.prettify())
         # console.print("_____________________________________________")
         divs: ResultSet[Tag] = soup.find_all("div")
+        console.print(serverlist)
+        console.print(soup.find_all("div", attrs={"data-type": "hsub"}))
+        ipdb.set_trace()
 
         def inner_helper(word: str) -> Tag | None:
 
@@ -191,6 +308,9 @@ async def get_episode_servers(url: str, id: int, session: ClientSession) -> Seas
     season.episode_server = await asyncio.gather(*tasks)
 
     # console.print(season)
+
+    ipdb.set_trace()
+    console.print(season)
     return season
 
     # console.print(episode_server)
@@ -250,18 +370,99 @@ async def get_data_id(url: str, session: ClientSession):
 
     result = await fetch_with_no_semaphore(url, session)
 
-    soup: BeautifulSoup = BeautifulSoup(result, global_html_parser)
+    soup: BeautifulSoup = BeautifulSoup(result, PARSER)
 
-    divs = soup.find_all("div")
+    data_id = soup.find(
+        "div",
+        attrs={"class": "container watch-wrap", "itemprop": "mainEntity"},
+    ).get("data-id")  # ty: ignore[unresolved-attribute]
 
-    id: int = 0
+    return data_id
 
-    for div in divs:
-        if n := div.get("data-id"):
-            id = int(n)  # ty:ignore[invalid-argument-type]
+
+async def extract(
+    SERVER_EXTRACTORS,
+    SESSION: ClientSession,
+    name: str,
+    audio_priority,
+    data_id: str,
+    FOLDER_PATH: Path,
+) -> Episode | None:
+
+    server_div: ResultSet[Tag]
+
+    res_server = await fetch(
+        SESSION=SESSION,
+        url=ANIMESUGE_URL + "/ajax/server/list",
+        semaphore=ANIMESUGE,
+        params={"servers": data_id},
+        headers=HEADERS,
+        json=True,
+    )
+
+    soup: BeautifulSoup = BeautifulSoup(res_server["result"], PARSER)
+
+    for dub_or_sub in audio_priority:
+        div = soup.find(
+            "div",
+            attrs={
+                "data-type": dub_or_sub,
+            },
+        )
+        if div:
+            server_div = div.find_all(
+                "div",
+                attrs={
+                    "class": "server",
+                    "data-ep-id": True,
+                    "data-link-id": True,
+                },
+            )
             break
 
-    return id
+    ipdb.set_trace()
+    links = {
+        div.getText(strip=True)[:-2].lower(): div.get("data-link-id")
+        for div in server_div
+    }
+
+    for server, extractor in SERVER_EXTRACTORS.items():
+        link = links.get(server)
+        if not link:
+            continue
+
+        result = await extractor()
+
+        if result is not None:
+            return result
+
+    return None
+
+
+async def vidstrem(
+    server_params: str, SESSION: ClientSession, name: str, FOLDER_PATH: Path
+) -> Episode | None:
+    pass
+
+
+async def hd(
+    data_id: str, SESSION: ClientSession, name: str, FOLDER_PATH: Path
+) -> Episode | None:
+
+    res_ = await fetch(
+        url=ANIMESUGE_URL,
+        SESSION=SESSION,
+        semaphore=ANIMESUGE,
+        params={"get": data_id},
+        headers=HEADERS | {"Referer": ANIMESUGE_URL},
+    )
+    pass
+
+
+async def vidplay(
+    server_params: str, SESSION: ClientSession, name: str, FOLDER_PATH: Path
+) -> Episode | None:
+    pass
 
 
 async def extract_megaplay(
@@ -293,7 +494,7 @@ async def extract_megaplay(
         headers=headers_referrer,
     )
 
-    soup: BeautifulSoup = BeautifulSoup(response2, global_html_parser)
+    soup: BeautifulSoup = BeautifulSoup(response2, PARSER)
 
     data_id = ""
 
@@ -351,7 +552,7 @@ async def extract_megaplay(
                 headers=headers_referrer,
             )
 
-            soup: BeautifulSoup = BeautifulSoup(response2, global_html_parser)
+            soup: BeautifulSoup = BeautifulSoup(response2, PARSER)
 
             data_id = ""
 
@@ -397,47 +598,56 @@ async def extract_megaplay(
     )
 
 
-async def get_season(url: str, session):
+async def get_season(url: str, session, SERVER_EXTRACTORS, audio_priority):
 
     url_parsed = urlparse(url)
     console.print()
     site = url.partition(url_parsed.path)[0]
 
-    id: int = await get_data_id(url, session)
-    season = await get_episode_servers(url, session=session, id=id)
+    id = await get_data_id(url, session)
+    console.print("id = ", id)
 
-    tasks = []
-    tasks2 = []
-
-    for idx, servers in enumerate(season.episode_server):
-        for server in servers:
-            if "megaplay" in server.name:
-                task = asyncio.create_task(
-                    extract_megaplay(
-                        server.link,
-                        site,
-                        session=session,
-                        name=season.crawl_link[idx].name,
-                        server_name=server.name,
-                    )
-                )
-                tasks.append(task)
-
-            if "vidwish" in server.name:
-                task2 = asyncio.create_task(
-                    extract_megaplay(
-                        server.link,
-                        site,
-                        session=session,
-                        name=season.crawl_link[idx].name,
-                        server_name=server.name,
-                    )
-                )
-                tasks2.append(task2)
-
-    result1 = await asyncio.gather(*tasks)
-    result2 = await asyncio.gather(*tasks2)
-    season.episode = [list(x) for x in zip(result1, result2)]
+    season = await extract_episodes(
+        URL=url,
+        SESSION=session,
+        ID=id,
+        dir_=Path("~/Videos/Anime/"),
+        SERVER_EXTRACTORS=SERVER_EXTRACTORS,
+        audio_priority=audio_priority,
+    )
+    #
+    # tasks = []
+    # tasks2 = []
+    #
+    # for idx, servers in enumerate(season.episode_server):
+    #     for server in servers:
+    #         if "megaplay" in server.name:
+    #             task = asyncio.create_task(
+    #                 extract_megaplay(
+    #                     server.link,
+    #                     site,
+    #                     session=session,
+    #                     name=season.crawl_link[idx].name,
+    #                     server_name=server.name,
+    #                 )
+    #             )
+    #             tasks.append(task)
+    #
+    #         if "vidwish" in server.name:
+    #             task2 = asyncio.create_task(
+    #                 extract_megaplay(
+    #                     server.link,
+    #                     site,
+    #                     session=session,
+    #                     name=season.crawl_link[idx].name,
+    #                     server_name=server.name,
+    #                 )
+    #             )
+    #             tasks2.append(task2)
+    #
+    # result1 = await asyncio.gather(*tasks)
+    # result2 = await asyncio.gather(*tasks2)
+    # season.episode = [list(x) for x in zip(result1, result2)]
     # season.episode = result2
     console.print("orchestra is working")
 
@@ -461,7 +671,19 @@ def save_for_ytdlp(season: Season):
 
 async def Scrape(url: str, session: ClientSession) -> Season:
 
-    season = await get_season(url, session=session)
+    SERVER_EXTRACTORS: dict[str, ServerExtractor] = {
+        "vidstrem": vidstrem,
+        "hd": hd,
+        "vidplay": vidplay,
+    }
+    audio_priority = ["dub", "sub", "hsub"]
+
+    season = await get_season(
+        url,
+        session=session,
+        SERVER_EXTRACTORS=SERVER_EXTRACTORS,
+        audio_priority=audio_priority,
+    )
     # save_for_ytdlp(season)
 
     # id: int = await get_data_id(url, session)
@@ -487,7 +709,7 @@ async def main():
     session: ClientSession = ClientSession()
 
     console.print("It is working")
-    season = await get_season(url, session=session)
+    season = await Scrape(url, session=session)
     # save_for_ytdlp(season)
     console.print(season)
 

@@ -6,19 +6,31 @@ import asyncio
 console: Console = Console()
 
 
-async def fetch(session: ClientSession, url: str, SEMAPHORE: Semaphore, headers=None):
+async def fetch(
+    SESSION: ClientSession,
+    url: str,
+    semaphore: Semaphore,
+    headers=None,
+    params=None,
+    json: bool = False,
+):
     delay = 1
 
     for attempt in range(3):
         try:
-            async with SEMAPHORE:
-                async with session.get(url=url, headers=headers) as response:
+            async with semaphore:
+                async with SESSION.get(
+                    url=url, params=params, headers=headers
+                ) as response:
                     if response.status == 429:
                         console.print("STATUS : ", response.status)
                         console.print("URL : ", url)
 
                         # NOTE : Leave Release Semaphore
                         continue
+
+                    if json and "application/json" in response.content_type:
+                        return await response.json()
 
                     return await response.text()
         except Exception:

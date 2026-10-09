@@ -11,7 +11,8 @@ from aiohttp import (
     TCPConnector,
     ClientConnectionResetError,
 )
-from Scrapers.animesuge import Scrape
+
+# from Scrapers.animesuge import Scrape
 from rich.console import Console
 from asyncio import Semaphore
 from asyncio.subprocess import Process
@@ -744,7 +745,7 @@ async def pipeline(season: Season, session: ClientSession, dir_: Path):
 async def main():
 
     # name = "Aliens Among Immortals"
-    name: str = "Guangyin Zhi Wai"
+    name: str = "Yi Zhan Cangqiong"
     session: ClientSession = ClientSession()
 
     episodes, _ = await myanime(
