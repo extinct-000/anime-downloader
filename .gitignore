@@ -9,3 +9,10 @@ wheels/
 # Virtual environments
 .venv
 src/scratch.json
+
+# Dev Files
+*.js
+*.txt
+*.md
+*.json
+*.vim

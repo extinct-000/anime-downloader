@@ -10,6 +10,7 @@ dependencies = [
     "brotli>=1.2.0",
     "brotlicffi>=1.2.0.1",
     "bs4>=0.0.2",
+    "cryptography>=50.0.2",
     "curl-cffi<0.16",
     "lxml>=6.1.1",
     "m3u8>=6.0.0",
