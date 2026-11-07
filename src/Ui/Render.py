@@ -1,5 +1,6 @@
+from typer.cli import app
 from Dataobj import BaseEvent, StartEvent, EventType, ProgressEvent, CompletedEvent
-from Ui.UIBus import UIBus
+from Ui.UIBus import UIBus, bus
 import time
 import asyncio
 
@@ -63,16 +64,20 @@ class UIController:
             self.scraper, title="[reverse]SCRAPING[/]", style=self.title_style
         )
 
-        layout: Layout = Layout(name="root")
-        layout.split_column(Layout(name="top"), Layout(name="bottom"))
+        self._layout: Layout = Layout(name="root")
+        self._layout.split_column(Layout(name="top"), Layout(name="bottom"))
 
-        layout["top"].update(self.download_panel)
-        layout["bottom"].update(self.scrape_panel)
+        self._layout["top"].update(self.download_panel)
+        self._layout["bottom"].update(self.scrape_panel)
 
-    def run(self):
-        with Live():
+    async def run(self):
+        # console.print("Inside run")
+        with Live(self._layout, refresh_per_second=60):
+            # while not self.download.finished:
             while True:
-                pass
+                event: BaseEvent = await self._bus.receive()
+
+                self.apply(event)
 
     def apply(self, event: BaseEvent):
         type = event.type
@@ -87,21 +92,51 @@ class UIController:
 
         if isinstance(event, ProgressEvent):
             if type is EventType.DOWNLOAD:
-                pass
+                self.download.update(self._ids[event.id], completed=event.completed)
 
             elif type is EventType.SCRAPER:
-                pass
+                self.scraper.update(self._ids[event.id], completed=event.completed)
             return
 
         if isinstance(event, CompletedEvent):
             if type is EventType.DOWNLOAD:
-                pass
+                self.download.remove_task(self._ids[event.id])
 
             elif type is EventType.SCRAPER:
-                pass
+                self.scraper.remove_task(self._ids[event.id])
         pass
 
     pass
+
+
+async def main2():
+
+    ui: UIController = UIController(bus)
+
+    # console.print("main is working")
+    task_flush = asyncio.create_task(bus.flush())
+    task_run = asyncio.create_task(ui.run())
+
+    # console.print("After Creating tasks")
+
+    id = "121"
+    id2 = "122"
+
+    await bus.emit(StartEvent(EventType.DOWNLOAD, id, "Episode 1"))
+    await bus.emit(StartEvent(EventType.DOWNLOAD, id2, "Episode 2"))
+
+    for num in range(101):
+        event = ProgressEvent(EventType.DOWNLOAD, id, 3.3, 3.3, completed=num)
+        event2 = ProgressEvent(EventType.DOWNLOAD, id2, 3.3, 3.3, completed=num + 2)
+        await asyncio.sleep(0.03)
+        await bus.emit_progress(event)
+        await bus.emit_progress(event2)
+
+    await asyncio.sleep(1)
+    await bus.emit(CompletedEvent(EventType.DOWNLOAD, id))
+    await bus.emit(CompletedEvent(EventType.DOWNLOAD, id2))
+    # await asyncio.gather(task_flush)
+    # await asyncio.gather(task_run)
 
 
 async def main():
@@ -178,4 +213,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(main2())
