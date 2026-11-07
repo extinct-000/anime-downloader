@@ -93,6 +93,8 @@ class StartEvent(BaseEvent):
 
 @dataclass
 class ProgressEvent(BaseEvent) :
+    eta                        : float
+    speed                      : float
     completed                  : int
 
 
