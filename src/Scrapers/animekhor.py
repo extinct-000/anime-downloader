@@ -3,7 +3,7 @@ import m3u8
 import base64
 from m3u8 import PlaylistList, Playlist, M3U8
 from pathlib import Path
-from Dataobj import Episode, Stream
+from Dataobj import Episode, Stream, EpisodeMetrics
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable
 from bs4 import BeautifulSoup, ResultSet, Tag
@@ -13,6 +13,23 @@ from Utils.requests import fetch
 from aiohttp import ClientSession
 from asyncio import Semaphore
 
+from contextlib import contextmanager
+from time import monotonic
+
+
+@contextmanager
+def track_stage(metrics: EpisodeMetrics, stage: str):
+    started = monotonic()
+    metrics.current_stage = stage
+
+    try:
+        yield
+    finally:
+        elapsed = monotonic() - started
+
+        metrics.stage_times[stage] = (
+            metrics.stage_times.get(stage, 0.0) + elapsed
+        )
 
 HEADERS: dict[str, str] = {
     "accept"                   : "text/html,application/xhtml+xml,application/xml;q=0.9,image/jxl,image/avif,image/webp,image/apng,*/*;q=0.8",
@@ -41,11 +58,11 @@ class Episode_CTX:
     links: dict[str, str]
 
 
-ServerExtractor = Callable[[str, ClientSession, str, Path], Awaitable[Episode | None]]
+ServerExtractor = Callable[[str, ClientSession, str, Path,EpisodeMetrics], Awaitable[Episode | None]]
 
 
 async def okru(
-    url: str, session: ClientSession, name: str, folder_path: Path
+    url: str, session: ClientSession, name: str, folder_path: Path,metrics : EpisodeMetrics
 ) -> Episode | None:
 
     if Path(folder_path / (name + ".mkv")).exists():
@@ -54,11 +71,8 @@ async def okru(
     def get_best_format(playlist: list[PlaylistList]) -> Playlist:
         return max(
             playlist,
-            key=lambda f: (
-                f.stream_info.bandwidth or 0,
-                f.stream_info.resolution[0] or 0,
-            ),
-        )  # ty: ignore[no-matching-overload]
+            key=lambda f: (f.stream_info.bandwidth or 0, f.stream_info.resolution[0] or 0,),  # ty: ignore[unresolved-attribute]
+        )  # ty: ignore[no-matching-overload, invalid-return-type]
 
     if "https:" not in url:
         url = "https:" + url
@@ -77,7 +91,8 @@ async def okru(
         url       = url,
         SESSION   = session,
         semaphore = OKRU,
-        headers   = headers
+        headers   = headers,
+        metrics   = metrics
     )
     soup: BeautifulSoup = BeautifulSoup(response_html, "lxml")
 
@@ -115,7 +130,8 @@ async def okru(
         url       = m3u8_manifest,
         SESSION   = session,
         semaphore = OKRU_CDN,
-        headers   = headers
+        headers   = headers,
+        metrics   = metrics
     )
 
     if not response_m3u8.startswith("#EXTM3U"):
@@ -176,6 +192,7 @@ async def extract(
     name       : str,
     url        : str,
     folder_path: Path,
+    metrics    : EpisodeMetrics
 ) -> Episode | None:
 
     console.print("Extracting ... ")
@@ -183,7 +200,8 @@ async def extract(
     if Path(folder_path / (name + ".mkv")).exists():
         return None
 
-    ctx: Episode_CTX = await extract_link(url, session, name)
+    with track_stage(metrics,"extract_link"):
+        ctx: Episode_CTX = await extract_link(url, session, name,metrics)
 
     console.print("Extracted ... links")
 
@@ -193,26 +211,29 @@ async def extract(
         if not link:
             continue
 
-        result: Episode | None = await extractor(
-            link,
-            session,
-            name,
-            folder_path,
-        )
+        with track_stage(metrics,f"extract_{server}"):
+            result: Episode | None = await extractor(
+                link,
+                session,
+                name,
+                folder_path,
+                metrics,
+            )
         console.print("Extracted ... server")
 
         if result is not None:
+            metrics.finish()
             return result
 
     return None
 
 
-async def extract_link(url: str, session: ClientSession, name: str) -> Episode_CTX:
+async def extract_link(url: str, session: ClientSession, name: str,metrics : EpisodeMetrics) -> Episode_CTX:
 
     ctx     : Episode_CTX = Episode_CTX(name, {})
 
     response: Any         = await fetch(
-        SESSION=session, url=url, semaphore=ANIMEKHOR, headers=HEADERS
+        SESSION=session, url=url, semaphore=ANIMEKHOR, headers=HEADERS,metrics=metrics
     )
 
     soup  : BeautifulSoup = BeautifulSoup(response, "lxml")
@@ -273,7 +294,10 @@ async def Scrape(
     #     )
     # )
 
+    episodes_metrics : list[EpisodeMetrics] = []
     for idx, ep in enumerate(episodes_links):
+        metrics : EpisodeMetrics = EpisodeMetrics(episode_id = f"Episode {length - idx}")
+        episodes_metrics.append(metrics)
         tasks.append(
             asyncio.create_task(
                 extract(
@@ -282,11 +306,16 @@ async def Scrape(
                     name        = f"Episode {length - idx}",
                     url         = ep,
                     folder_path = FOLDER_PATH,
+                    metrics     = metrics
                 )
             )
         )
 
     episodes: list[Episode | None] = await asyncio.gather(*tasks)
+
+    for epmet in episodes_metrics:
+        console.print()
+        console.print(epmet)
 
     return episodes, FOLDER_NAME
 
@@ -295,7 +324,7 @@ async def main():
 
     session: ClientSession = ClientSession()
 
-    url    : str           = "https://animekhor.org/anime/the-guardian-of-daxia/"
+    url    : str           = "https://animekhor.org/anime/slay-the-gods-season-2/"
 
     dir_   : Path          = Path("/home/extinct/Videos/Anime/")
 

@@ -1,3 +1,4 @@
+from Dataobj import EpisodeMetrics
 from asyncio import Semaphore
 from aiohttp import ClientSession
 from rich.console import Console
@@ -13,6 +14,7 @@ async def fetch(
     headers=None,
     params=None,
     json: bool = False,
+    metrics: EpisodeMetrics | None = None,
 ):
     delay = 1
 
@@ -32,7 +34,11 @@ async def fetch(
                     if json and "application/json" in response.content_type:
                         return await response.json()
 
-                    return await response.text()
+                    body = await response.text()
+                    if metrics:
+                        metrics.requests += 1
+                        metrics.bytes_received += len(body)
+                    return body
         except Exception:
             if attempt == 3:
                 raise
