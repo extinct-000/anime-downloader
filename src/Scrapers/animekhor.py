@@ -3,7 +3,7 @@ import m3u8
 import base64
 from m3u8 import PlaylistList, Playlist, M3U8
 from pathlib import Path
-from Dataobj import Episode, Stream, EpisodeMetrics
+from Utils.model import Episode, Stream, EpisodeMetrics
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable
 from bs4 import BeautifulSoup, ResultSet, Tag
@@ -94,6 +94,7 @@ async def okru(
         headers   = headers,
         metrics   = metrics
     )
+
     soup: BeautifulSoup = BeautifulSoup(response_html, "lxml")
 
     data_option = soup.find(
@@ -125,6 +126,7 @@ async def okru(
         console.print(data_option)
     m3u8_manifest = m3u8_manifest.replace("\\u0026", "&")
     m3u8_manifest = m3u8_manifest.replace("%20", "")
+
 
     response_m3u8 = await fetch(
         url       = m3u8_manifest,
@@ -324,7 +326,7 @@ async def main():
 
     session: ClientSession = ClientSession()
 
-    url    : str           = "https://animekhor.org/anime/slay-the-gods-season-2/"
+    url    : str           = "https://animekhor.org/anime/oriental-martial-academy/"
 
     dir_   : Path          = Path("/home/extinct/Videos/Anime/")
 

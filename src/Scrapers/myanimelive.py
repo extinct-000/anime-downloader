@@ -13,7 +13,7 @@ from asyncio import Semaphore
 from yt_dlp.networking.impersonate import ImpersonateTarget
 from Utils.requests import fetch
 
-from Dataobj import Season, Server, Episode, Stream
+from Utils.model import Season, Server, Episode, Stream
 from typing import Any, Coroutine, Callable, Awaitable
 from bs4.element import AttributeValueList
 from bs4 import BeautifulSoup, Tag, ResultSet
@@ -174,14 +174,14 @@ headers = {
     "Accept-Language": "en-US,en;q=0.9",
     "Accept-Encoding": "gzip, deflate, br, zstd",
     "X-Requested-With": "XMLHttpRequest",
-    # "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+    # "Content-Type"    : "application/x-www-form-urlencoded; charset=UTF-8",
     "Origin": "https://myanime.live",
     "Sec-GPC": "1",
     "Alt-Used": "myanime.live",
     "sec-ch-ua-platform": "Linux",
     "Connection": "keep-alive",
     "sec-fetch-dest": "document",
-    # "Referer": "https://myanime.live/?s=Renegade+Immortal",
+    # "Referer"         : "https://myanime.live/?s=Renegade+Immortal",
     "Cookie": "cf_clearance=J4ewRP4rAnG4jdmpYJoBPcUVC1g7gVoB9BbxEzaF3eU-1787140871-1.2.1.1-NIcasJQ_0NDKfeeBg6qbICAmOpn7Fg3NYzIPR8yJAvLWbgXms8fxVDumAGTfd0bdg0l65lWC5LxFawNU3NyQKREDaQIzrRoD8UIVBcFfJUs6OZ1sDvopiBvyvz4P5OJ3szu.5Cs3EEbTmkAf5GUuPnCSpIvhv4bEt7t.vITsthCicV1UBNrjmvCNVfXERQnef4k0EQRku86P7ZWpoHpy6OKmwOdvxxbwQbtAkpNFh2T.2bWmdwRybex2uBLUGZBAPejfDD.5WaHAml9ppVrRileKyqUh9FRYcRJKgb.nigKXDffOcFkH7Thy0VEynAeR5aDJFk1pIoU5RNDnpZDcifr1dhrlJbCXIbQh8fReW8Y",
     "Sec-Fetch-Dest": "empty",
     "Sec-Fetch-Mode": "cors",
@@ -191,7 +191,7 @@ headers = {
 HEADERS = {
     "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
     "accept-language": "en-US,en;q=0.8",
-    # "priority": "u=0, i",
+    # "priority"        : "u=0, i",
     "sec-ch-ua": '"Not=A?Brand";v="99", "Brave";v="151", "Chromium";v="151"',
     "sec-ch-ua-mobile": "?0",
     "sec-ch-ua-platform": '"Linux"',
@@ -259,7 +259,7 @@ async def fetch_data(session: ClientSession, url: str, data, headers: dict[str, 
         except Exception as e:
             if attempt == 3:
                 print(f"An error occurred: {e}")
-                print(f"Exception type: {type(e).__name__}")
+                print(f"Exception type   : {type(e).__name__}")
                 raise
             delay *= 2
             await asyncio.sleep(delay)
@@ -282,7 +282,7 @@ async def Scrape(name: str, session: ClientSession, dir_: Path):
 
     response = await fetch_data(
         session=session,
-        url="https://myanime.live/?infinity=scrolling",
+        url="https://myanime.live/?infinity = scrolling",
         data=build_query(name),
         headers=headers,
     )
@@ -292,6 +292,7 @@ async def Scrape(name: str, session: ClientSession, dir_: Path):
 
     tasks = []
     length = len(list_)
+
     for idx, uri in enumerate(list_):
         tasks.append(
             asyncio.create_task(
@@ -459,6 +460,7 @@ async def dailymotion(
 ) -> Episode | None:
 
     def get_best_format(formats):
+
         return max(
             formats,
             key=lambda f: (
@@ -593,6 +595,7 @@ async def extract_link(
 
 #######################################################################
 async def main():
+
     url = "https://myanime.live/?s=Renegade+Immortal"
 
     session: ClientSession = ClientSession()

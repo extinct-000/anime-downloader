@@ -141,7 +141,7 @@ class EpisodeMetrics:
         if network_time <= 0:
             return 0.0
 
-        return self.bytes_received / network_time
+        return self.bytes_received / network_time / (1024 * 1024)
 
     def format_duration(self,seconds: float) -> str:
         if seconds < 1:

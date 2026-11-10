@@ -12,7 +12,7 @@ from bs4 import BeautifulSoup, Tag, ResultSet
 from rich.console import Console
 from aiohttp import ClientSession
 from asyncio import Semaphore
-from Dataobj import Server, Season, Stream, Episode
+from Utils.model import Server, Season, Stream, Episode
 from Utils.requests import fetch
 
 from urllib.parse import quote, urlparse

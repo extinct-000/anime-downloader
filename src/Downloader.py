@@ -1,6 +1,5 @@
-from pytest import Dir
-from operator import sub
-import Scrapers.myanimelive
+from Ui.UIBus import UIBus, bus
+from Ui.Render import UIController
 import aiohttp
 import sys
 from m3u8.model import InitializationSection
@@ -20,7 +19,7 @@ from pathlib import Path
 from urllib.parse import urljoin
 from dataclasses import dataclass
 from m3u8 import M3U8
-from Dataobj import (
+from Utils.model import (
     Stream,
     Server,
     Episode,
@@ -29,8 +28,13 @@ from Dataobj import (
     Mux_Info_,
     PreparedStream,
     Season,
+    StartEvent,
+    EventType,
+    ProgressEvent,
+    CompletedEvent,
 )
 from Scrapers.myanimelive import Scrape as myanime
+from Scrapers.animekhor import Scrape as animekhor
 
 import aria2p.api
 import asyncio
@@ -682,10 +686,10 @@ async def to_Episode(
 
 
 async def pipeline2(
-    episodes: list[Episode], name: str, session: ClientSession, dir_: Path
+    episodes: list[Episode], Folder_name: str, session: ClientSession, dir_: Path
 ):
 
-    dir_ = dir_ / (clean(name))
+    dir_ = dir_ / (clean(Folder_name))
 
     dir_.mkdir(parents=True, exist_ok=True)
 
@@ -745,18 +749,29 @@ async def pipeline(season: Season, session: ClientSession, dir_: Path):
 async def main():
 
     # name = "Aliens Among Immortals"
-    name: str = "Yi Zhan Cangqiong"
+    # name: str = "Yi Zhan Cangqiong"
+
+    controller: UIController = UIController(bus)
+
     session: ClientSession = ClientSession()
 
-    episodes, _ = await myanime(
-        name=name,
-        session=session,
-        dir_=Path("/home/extinct/Videos/Anime/"),
+    # episodes, _ = await myanime(
+    #     name=name,
+    #     session=session,
+    #     dir_=Path("/home/extinct/Videos/Anime/"),
+    # )
+    url = "https://animekhor.org/anime/oriental-martial-academy/"
+
+    episodes, name = await animekhor(
+        url=url, session=session, dir_=Path("/home/extinct/Videos/Anime/")
     )
 
+    asyncio.create_task(bus.flush())
+    asyncio.create_task(controller.run())
+
     await pipeline2(
-        episodes=episodes,
-        name=name,
+        episodes=episodes,  # ty: ignore[invalid-argument-type]
+        Folder_name=name,
         session=session,
         dir_=Path("/home/extinct/Videos/Anime/"),
     )
@@ -774,7 +789,7 @@ async def fetch_with_no_semaphore(
         try:
             async with global_m3u8__semaphore:
                 async with session.get(url, headers=headers, ssl=False) as response:
-                    console.print(response)
+                    # console.print(response)
                     if response.status >= 200 and response.status <= 300:
                         return await response.text()
 
@@ -1017,11 +1032,12 @@ async def aria_stream(
     # with open(segment_txt, "w") as file:
     #     file.write(text)
 
+    await bus.emit(StartEvent(EventType.DOWNLOAD, episode.name, episode.name))
     result = client.multicall(multicall)
     gids = [gid[0] for gid in result]  # ty:ignore[not-subscriptable]
 
     remaining = set(gids)
-    console.print(aria.get_stats())
+    # console.print(aria.get_stats())
 
     while remaining:
         finished = set()
@@ -1051,20 +1067,26 @@ async def aria_stream(
                 if dl.total_length > 0
             )
             eta = remaining_bytes / total_speed
-            console.print(f"{episode.name}|... | ETA: {eta:.1f}s")
-            completed_segment = total_seg - len(remaining)
+            # console.print(f"{episode.name}|... | ETA: {eta:.1f}s")
+            completed_segment = total_seg - len(remaining) - 1
 
             percent = (completed_segment / total_seg) * 100
 
-            console.print(
-                f"{percent:.2f}%  | {total_speed / 1024 / 1024:.2f}MB/s | ETA: {eta:.1f}s"
+            await bus.emit_progress(
+                ProgressEvent(EventType.DOWNLOAD, episode.name, eta, 3.3, int(percent))
             )
+            # console.print(
+            #     f"{percent:.2f}%  | {total_speed / 1024 / 1024:.2f}MB/s | ETA: {eta:.1f}s"
+            # )
 
         # if total_speed != 0:
 
-        await asyncio.sleep(1)
+        await asyncio.sleep(0.5)
 
-    console.print(f"[green bold]Completed {episode.name}[/]")
+    console.print(f"{episode.name} = {percent}")
+    # console.print(f"[green bold]Completed {episode.name}[/]")
+    await asyncio.sleep(0.8)
+    await bus.emit(CompletedEvent(EventType.DOWNLOAD, episode.name))
 
     async with global_video_semaphore:
         await asyncio.gather(
@@ -1101,7 +1123,7 @@ def strip_png_wrapper(path: Path):
             file.seek(0)
             file.write(payload)
             file.truncate()
-            print(f"✓ Removed 252-byte header: {path.name}")
+            # print(f"✓ Removed 252-byte header: {path.name}")
             return
 
         # === Case 1: Extra leading byte (like 0x0A) ===
@@ -1111,7 +1133,7 @@ def strip_png_wrapper(path: Path):
             file.seek(0)
             file.write(payload)
             file.truncate()
-            print(f"✓ Removed leading byte: {path.name}")
+            # print(f"✓ Removed leading byte: {path.name}")
             return
 
         # === Case 2: Full PNG wrapper ===
@@ -1124,7 +1146,7 @@ def strip_png_wrapper(path: Path):
                 file.seek(0)
                 file.write(payload)
                 file.truncate()
-                print(f"✓ Removed PNG wrapper: {path.name}")
+                # print(f"✓ Removed PNG wrapper: {path.name}")
                 return
 
         # === Case 3: Look for 'ftyp' anywhere near start ===
@@ -1136,10 +1158,10 @@ def strip_png_wrapper(path: Path):
             file.seek(0)
             file.write(payload)
             file.truncate()
-            print(f"✓ Fixed offset to ftyp: {path.name}")
+            # print(f"✓ Fixed offset to ftyp: {path.name}")
             return
 
-        print(f"⚠ No change needed or unrecognized format: {path.name}")
+        # print(f"⚠ No change needed or unrecognized format: {path.name}")
 
 
 if __name__ == "__main__":

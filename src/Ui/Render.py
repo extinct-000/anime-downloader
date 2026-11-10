@@ -1,4 +1,4 @@
-from Dataobj import BaseEvent, StartEvent, EventType, ProgressEvent, CompletedEvent
+from Utils.model import BaseEvent, StartEvent, EventType, ProgressEvent, CompletedEvent
 from Ui.UIBus import UIBus, bus
 import time
 import asyncio

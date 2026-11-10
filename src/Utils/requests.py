@@ -1,4 +1,4 @@
-from Dataobj import EpisodeMetrics
+from Utils.model import EpisodeMetrics
 from asyncio import Semaphore
 from aiohttp import ClientSession
 from rich.console import Console
