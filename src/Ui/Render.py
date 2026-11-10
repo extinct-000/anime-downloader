@@ -1,4 +1,3 @@
-from typer.cli import app
 from Dataobj import BaseEvent, StartEvent, EventType, ProgressEvent, CompletedEvent
 from Ui.UIBus import UIBus, bus
 import time
@@ -28,8 +27,6 @@ from dataclasses import dataclass, field
 
 console: Console = Console()
 
-counter: int = 0
-
 
 class UIController:
     def __init__(self, bus: UIBus):
@@ -44,7 +41,7 @@ class UIController:
             TextColumn("{task.description}"),
             BarColumn(bar_width=1000),
             TaskProgressColumn(),
-            TimeRemainingColumn(),
+            TimeRemainingColumn(compact=True),
             auto_refresh=False,
             expand=True,
         )
@@ -53,7 +50,7 @@ class UIController:
             TextColumn("{task.description}"),
             BarColumn(bar_width=1000),
             TaskProgressColumn(),
-            TimeRemainingColumn(),
+            TimeRemainingColumn(compact=True),
             auto_refresh=False,
             expand=True,
         )
@@ -71,9 +68,7 @@ class UIController:
         self._layout["bottom"].update(self.scrape_panel)
 
     async def run(self):
-        # console.print("Inside run")
         with Live(self._layout, refresh_per_second=60):
-            # while not self.download.finished:
             while True:
                 event: BaseEvent = await self._bus.receive()
 
@@ -104,37 +99,57 @@ class UIController:
 
             elif type is EventType.SCRAPER:
                 self.scraper.remove_task(self._ids[event.id])
-        pass
-
-    pass
 
 
 async def main2():
 
     ui: UIController = UIController(bus)
 
-    # console.print("main is working")
-    task_flush = asyncio.create_task(bus.flush())
-    task_run = asyncio.create_task(ui.run())
-
-    # console.print("After Creating tasks")
+    asyncio.create_task(bus.flush())
+    asyncio.create_task(ui.run())
 
     id = "121"
+
     id2 = "122"
 
-    await bus.emit(StartEvent(EventType.DOWNLOAD, id, "Episode 1"))
-    await bus.emit(StartEvent(EventType.DOWNLOAD, id2, "Episode 2"))
+    id3 = "123"
+
+    id4 = "124"
+
+    await bus.emit(StartEvent(EventType.SCRAPER, id, "Episode 1"))
+
+    await bus.emit(StartEvent(EventType.SCRAPER, id2, "Episode 1"))
+
+    await bus.emit(StartEvent(EventType.DOWNLOAD, id3, "Episode 4"))
+
+    await bus.emit(StartEvent(EventType.DOWNLOAD, id4, "Episode 5"))
 
     for num in range(101):
-        event = ProgressEvent(EventType.DOWNLOAD, id, 3.3, 3.3, completed=num)
-        event2 = ProgressEvent(EventType.DOWNLOAD, id2, 3.3, 3.3, completed=num + 2)
+        event = ProgressEvent(EventType.SCRAPER, id, 3.3, 3.3, completed=num)
+
+        event2 = ProgressEvent(EventType.SCRAPER, id2, 3.3, 3.3, completed=num + 2)
+
+        event3 = ProgressEvent(EventType.DOWNLOAD, id3, 3.3, 3.3, completed=num)
+
+        event4 = ProgressEvent(EventType.DOWNLOAD, id4, 3.3, 3.3, completed=num)
+
         await asyncio.sleep(0.03)
+
         await bus.emit_progress(event)
         await bus.emit_progress(event2)
+        await bus.emit_progress(event3)
+        await bus.emit_progress(event4)
 
     await asyncio.sleep(1)
-    await bus.emit(CompletedEvent(EventType.DOWNLOAD, id))
-    await bus.emit(CompletedEvent(EventType.DOWNLOAD, id2))
+
+    await bus.emit(CompletedEvent(EventType.SCRAPER, id2))
+
+    await bus.emit(CompletedEvent(EventType.DOWNLOAD, id3))
+
+    await asyncio.sleep(0.5)
+
+    await bus.emit(CompletedEvent(EventType.SCRAPER, id))
+    await bus.emit(CompletedEvent(EventType.DOWNLOAD, id4))
     # await asyncio.gather(task_flush)
     # await asyncio.gather(task_run)
 
